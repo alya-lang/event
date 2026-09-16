@@ -7,10 +7,13 @@ function main()
     test_suite("event Package Socket Polling Test Suite")
     let r = runner_new()
 
+    # 1. Native Kernel Multiplexer (Lib/uv integration)
     let loop = ev::loop()
-    runner_assert(r, loop != null, "loop created")
+    runner_assert(r, loop is not null, "loop created")
+    let backend_name = loop.backend()
+    runner_assert(r, len(backend_name) > 0, "loop backend should be defined")
+    runner_assert(r, backend_name != "fallback", "loop should use native kernel multiplexer")
 
-    # 1. Start Non-Blocking TCP Server
     let test_port = 19876
     let srv = tcp_listen(test_port, 10)
     runner_assert(r, srv >= 0, "server socket should be valid (>= 0)")
@@ -65,6 +68,25 @@ function main()
     tcp_close(srv)
 
     runner_assert_eq(r, ev::loop_active_count(loop), 0, "active watchers should be 0 after cleanup")
+
+    # 8. Graceful Fallback Mode Verification (pure std/net loop)
+    let fb_loop = ev::loop_new(false)
+    runner_assert(r, fb_loop is not null, "fallback loop created")
+    runner_assert_str_eq(r, fb_loop.backend(), "fallback", "fallback loop should report fallback backend")
+    runner_assert_eq(r, fb_loop.active_count(), 0, "fallback loop active count is 0")
+
+    let srv_fb = tcp_listen(19877, 5)
+    tcp_set_nonblocking(srv_fb, 1)
+    fb_loop.watch_read(srv_fb, "fb_srv", null)
+    runner_assert_eq(r, fb_loop.active_count(), 1, "fallback loop registered watcher")
+
+    let fb_empty = fb_loop.poll(10)
+    runner_assert_eq(r, len(fb_empty), 0, "fallback poll empty")
+
+    fb_loop.unwatch(srv_fb)
+    tcp_close(srv_fb)
+    fb_loop.free()
+    runner_assert_eq(r, fb_loop.active_count(), 0, "fallback loop cleared after free")
 
     runner_summary(r)
 end

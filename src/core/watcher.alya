@@ -16,6 +16,9 @@ pub function watcher_add(loop, fd, events = 1, tag = "", data = null)
             w.events = events
             w.tag = tag
             w.data = data
+            if loop.poller is not null
+                loop.poller.modify(fd, events, w.id)
+            end
             return w.id
         end
     end
@@ -24,6 +27,9 @@ pub function watcher_add(loop, fd, events = 1, tag = "", data = null)
     loop.next_watcher_id += 1
     let w = io_watcher_new(wid, fd, events, tag, data)
     push(loop.watchers, w)
+    if loop.poller is not null
+        loop.poller.add(fd, events, wid)
+    end
     return wid
 end
 
@@ -46,6 +52,9 @@ pub function watcher_remove(loop, fd)
         end
     end
     loop.watchers = active_remaining
+    if removed == 1 and loop.poller is not null
+        loop.poller.remove(fd)
+    end
     return removed
 end
 
@@ -70,6 +79,19 @@ pub function watcher_find(loop, fd)
     end
     for w in loop.watchers
         if w.fd == fd and w.active == 1
+            return w
+        end
+    end
+    return null
+end
+
+# Finds an active watcher by unique watcher ID
+pub function watcher_find_by_id(loop, wid)
+    if loop is null or wid is null
+        return null
+    end
+    for w in loop.watchers
+        if w.id == wid and w.active == 1
             return w
         end
     end

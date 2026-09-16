@@ -2,6 +2,7 @@
 # Part of the Alya Language package ecosystem (https://github.com/alya-lang)
 
 import "std/bench"
+import "std/net"
 import "../src/lib.alya" as ev
 
 function main()
@@ -52,6 +53,22 @@ function main()
         m += 1
     end
     bench_stop(runner, "EventEmitter 2-listener dispatch (20,000 emits)")
+
+    # 5. Kernel Multiplexer Zero-Wait Polling Throughput
+    let loop3 = ev::loop()
+    let s_bench = tcp_listen(19899, 10)
+    tcp_set_nonblocking(s_bench, 1)
+    loop3.watch_readable(s_bench, "bench_srv", null)
+    bench_start(runner, 20000)
+    let n = 0
+    while n < 20000
+        loop3.poll(0)
+        n += 1
+    end
+    bench_stop(runner, "Kernel Multiplexer loop.poll(0) (20,000 polls)")
+    loop3.unwatch(s_bench)
+    tcp_close(s_bench)
+    loop3.free()
 
     bench_summary(runner)
 end

@@ -1,13 +1,23 @@
 # Core EventLoop Engine
 # Part of the Alya Language package ecosystem (https://github.com/alya-lang)
 
+import "uv" as uv
 import "../types.alya"
 import "./timer.alya"
 import "./watcher.alya"
 import "./poller.alya"
 
 # Creates a new initialized EventLoop instance
-pub function event_loop_new()
+# Backed by high-performance OS kernel multiplexer (Lib/uv) with fallback to std/net
+pub function event_loop_new(use_uv = true)
+    let p = null
+    let b = "fallback"
+    if use_uv != false and use_uv != 0 and use_uv is not null
+        p = uv::poller(64, 64)
+        if p is not null
+            b = uv::backend_name()
+        end
+    end
     return EventLoop {
         running: 0,
         timers: [],
@@ -15,7 +25,9 @@ pub function event_loop_new()
         next_timer_id: 1,
         next_watcher_id: 1,
         tick_count: 0,
-        stop_requested: 0
+        stop_requested: 0,
+        poller: p,
+        backend: b
     }
 end
 
@@ -25,6 +37,14 @@ pub function loop_stop(loop)
         loop.stop_requested = 1
         loop.running = 0
     end
+end
+
+# Returns the active backend name ("WSAPoll", "epoll", "kqueue", or "fallback")
+pub function loop_backend(loop)
+    if loop is null
+        return "none"
+    end
+    return loop.backend
 end
 
 # Returns 1 if the event loop is active and has work to do, 0 otherwise
@@ -53,6 +73,10 @@ end
 # Resets all state in the loop
 pub function loop_reset(loop)
     if loop is not null
+        if loop.poller is not null
+            loop.poller.close()
+            loop.poller = uv::poller(64, 64)
+        end
         loop.timers = []
         loop.watchers = []
         loop.stop_requested = 0
@@ -63,7 +87,7 @@ end
 
 # Executes a single tick through the event loop phases:
 # 1. Calculate dynamic timeout based on closest timer
-# 2. Poll socket I/O watchers
+# 2. Poll socket I/O watchers via kernel multiplexer (or fallback)
 # 3. Collect expired timers
 # Returns an array of EventNotification records triggered in this tick
 pub function loop_tick(loop, max_wait_ms = 100)
@@ -97,6 +121,7 @@ pub function loop_tick(loop, max_wait_ms = 100)
 
     return all_events
 end
+
 # Polls the event loop for up to max_wait_ms milliseconds and returns all triggered events
 pub function loop_poll(loop, max_wait_ms = 100)
     return loop_tick(loop, max_wait_ms)
@@ -124,11 +149,45 @@ pub function loop_run(loop, max_wait_ms = 100, on_event = null)
     return total_events
 end
 
+# Registers an OS process signal watcher (e.g. SIGINT = 2, SIGTERM = 15)
+pub function loop_watch_signal(loop, signum, tag = "signal", data = null)
+    if loop is null or loop.poller is null or signum is null or signum <= 0
+        return -1
+    end
+    let wid = loop.next_watcher_id
+    loop.next_watcher_id += 1
+    let res = loop.poller.watch_signal(signum, wid)
+    if res == 0
+        let w = io_watcher_new(wid, signum, 16, tag, data)
+        push(loop.watchers, w)
+        return wid
+    end
+    return -1
+end
+
+# Deregisters an OS process signal watcher
+pub function loop_unwatch_signal(loop, signum)
+    if loop is null or loop.poller is null or signum is null or signum <= 0
+        return 0
+    end
+    let removed = watcher_remove(loop, signum)
+    loop.poller.unwatch_signal(signum)
+    return removed
+end
+
 # Frees and resets all resources in the event loop
 pub function loop_free(loop)
     if loop is not null
         loop_stop(loop)
-        loop_reset(loop)
+        if loop.poller is not null
+            loop.poller.close()
+            loop.poller = null
+        end
+        loop.timers = []
+        loop.watchers = []
+        loop.stop_requested = 0
+        loop.running = 0
+        loop.tick_count = 0
     end
 end
 
@@ -146,6 +205,10 @@ end
 
 pub function EventLoop.stop(self)
     loop_stop(self)
+end
+
+pub function EventLoop.backend(self)
+    return loop_backend(self)
 end
 
 pub function EventLoop.is_running(self)
@@ -210,6 +273,14 @@ end
 
 pub function EventLoop.watch_writable(self, fd, tag = "", data = null)
     return watcher_add(self, fd, 2, tag, data)
+end
+
+pub function EventLoop.watch_signal(self, signum, tag = "signal", data = null)
+    return loop_watch_signal(self, signum, tag, data)
+end
+
+pub function EventLoop.unwatch_signal(self, signum)
+    return loop_unwatch_signal(self, signum)
 end
 
 pub function EventLoop.unwatch(self, fd)

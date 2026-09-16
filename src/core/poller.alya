@@ -1,8 +1,9 @@
-# Cross-Platform Socket Poller
+# Cross-Platform Socket Poller & Kernel Multiplexer
 # Part of the Alya Language package ecosystem (https://github.com/alya-lang)
 
 import "std/net"
 import "../types.alya"
+import "./watcher.alya"
 
 # Polls all registered active watchers for readiness within the allocated timeout
 # Returns an array of EventNotification structs
@@ -19,6 +20,42 @@ pub function poller_poll_watchers(loop, wait_ms = 0)
         return events
     end
 
+    # Fast path: Native OS Kernel Multiplexer (epoll / WSAPoll / kqueue via Lib/uv)
+    if loop.poller is not null
+        let uv_events = loop.poller.wait(wait_ms)
+        if len(uv_events) == 0
+            return events
+        end
+        for ev in uv_events
+            let w = watcher_find(loop, ev.fd)
+            if w is null
+                w = watcher_find_by_id(loop, ev.udata)
+            end
+            if w is null
+                continue
+            end
+            let real_fd = w.fd
+            let tag = w.tag
+            let data = w.data
+
+            # Map uv kernel events back to EventNotification
+            if (ev.events & 1) != 0 # Readable
+                push(events, event_notification_new(EventType.Read, real_fd, -1, tag, data))
+            end
+            if (ev.events & 2) != 0 # Writable
+                push(events, event_notification_new(EventType.Write, real_fd, -1, tag, data))
+            end
+            if (ev.events & 4) != 0 or (ev.events & 8) != 0 # Error or Hangup
+                push(events, event_notification_new(EventType.Error, real_fd, -1, tag, data))
+            end
+            if (ev.events & 16) != 0 # Signal
+                push(events, event_notification_new(EventType.Signal, real_fd, -1, tag, data))
+            end
+        end
+        return events
+    end
+
+    # Fallback path: Pure std/net linear polling loop
     # Fast path: single watcher can use the full wait duration directly
     if w_count == 1
         let w = loop.watchers[0]

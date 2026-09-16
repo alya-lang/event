@@ -1,6 +1,7 @@
 # event - High-Concurrency Reactor Event Loop, Timers, and I/O Multiplexer
 # Part of the Alya Language package ecosystem (https://github.com/alya-lang)
 
+import "uv" as uv
 import "./types.alya"
 import "./core/loop.alya"
 import "./core/timer.alya"
@@ -12,12 +13,12 @@ import "./stream/buffer.alya"
 # --- Convenience Aliases ---
 
 # Factory alias for EventLoop
-pub function loop()
-    return event_loop_new()
+pub function loop(use_uv = true)
+    return event_loop_new(use_uv)
 end
 
-pub function loop_new()
-    return event_loop_new()
+pub function loop_new(use_uv = true)
+    return event_loop_new(use_uv)
 end
 
 # Factory alias for EventEmitter
@@ -28,6 +29,11 @@ end
 # Factory alias for ByteBuffer
 pub function buffer()
     return byte_buffer_new()
+end
+
+# Convenience alias for querying loop active backend
+pub function backend(loop)
+    return loop_backend(loop)
 end
 
 # Convenience alias for adding a timeout
@@ -68,4 +74,14 @@ end
 # Convenience alias matching Phase 1 spec for writable watch
 pub function watch_writable(loop, fd, tag = "", data = null)
     return watcher_add(loop, fd, 2, tag, data)
+end
+
+# Convenience alias for watching an OS process signal
+pub function watch_signal(loop, signum, tag = "signal", data = null)
+    return loop_watch_signal(loop, signum, tag, data)
+end
+
+# Convenience alias for unwatching an OS process signal
+pub function unwatch_signal(loop, signum)
+    return loop_unwatch_signal(loop, signum)
 end

@@ -1,5 +1,6 @@
 # Unit tests for loop.run(), loop.free(), and continuous event processing
 import "std/test"
+import "std/net"
 import "../src/lib.alya" as ev
 
 function main()
@@ -20,10 +21,10 @@ function main()
 
     # 2. loop.stop() called during an interval
     let l2 = ev::loop()
-    let t_int = l2.interval(10, "heartbeat", null)
+    let t_int = l2.interval(5, "heartbeat", null)
 
-    # Run for 25ms manually via tick
-    let ticks = l2.tick(25)
+    # Run for 40ms manually via tick
+    let ticks = l2.tick(40)
     runner_assert(r, len(ticks) >= 1, "should have fired at least 1 interval")
 
     # Stop loop
@@ -32,23 +33,29 @@ function main()
 
     # 3. loop.free() cleans up all state
     let l3 = ev::loop()
+    let s_dummy = udp_socket()
     l3.timeout(50, "t_pending", null)
-    l3.watch_read(10, "w_pending", null)
+    l3.watch_read(s_dummy, "w_pending", null)
     runner_assert_eq(r, l3.active_count(), 2, "l3 should have 2 active handles")
 
     l3.free()
+    tcp_close(s_dummy)
     runner_assert_eq(r, l3.active_count(), 0, "l3.free() should clear all active handles")
     runner_assert_eq(r, l3.is_running(), 0, "l3 should not be running after free")
 
     # 4. Watcher aliases: watch_readable and watch_writable
     let l4 = ev::loop()
-    let w_r = l4.watch_readable(15, "read_sock", null)
-    let w_w = l4.watch_writable(16, "write_sock", null)
+    let s_r = udp_socket()
+    let s_w = udp_socket()
+    let w_r = l4.watch_readable(s_r, "read_sock", null)
+    let w_w = l4.watch_writable(s_w, "write_sock", null)
     runner_assert(r, w_r >= 1, "watch_readable registered successfully")
     runner_assert(r, w_w > w_r, "watch_writable registered successfully")
     runner_assert_eq(r, l4.active_count(), 2, "l4 active count should be 2")
-    l4.unwatch(15)
-    l4.unwatch(16)
+    l4.unwatch(s_r)
+    l4.unwatch(s_w)
+    tcp_close(s_r)
+    tcp_close(s_w)
     runner_assert_eq(r, l4.active_count(), 0, "unwatch cleared handles")
 
     runner_summary(r)

@@ -1,5 +1,6 @@
 # Basic unit tests for event package
 import "std/test"
+import "std/net"
 import "../src/lib.alya" as ev
 
 function main()
@@ -31,19 +32,25 @@ function main()
     runner_assert_eq(r, not_found, 0, "cancelling non-existent timer should return 0")
 
     # 3. Watcher registration and removal via struct methods
-    let wid1 = loop.watch_read(10, "read_client", null)
-    let wid2 = loop.watch_write(11, "write_client", null)
+    let s_b1 = udp_socket()
+    let s_b2 = udp_socket()
+    let wid1 = loop.watch_read(s_b1, "read_client", null)
+    let wid2 = loop.watch_write(s_b2, "write_client", null)
 
     runner_assert(r, wid1 >= 1, "watcher id should be valid")
     runner_assert(r, wid2 > wid1, "watcher id should be unique")
     runner_assert_eq(r, loop.active_count(), 3, "active handle count (1 timer + 2 watchers) should be 3")
 
-    let unwatch_res = loop.unwatch(10)
+    let unwatch_res = loop.unwatch(s_b1)
     runner_assert_eq(r, unwatch_res, 1, "unwatch should return 1")
     runner_assert_eq(r, loop.active_count(), 2, "remaining handles should be 2")
 
-    let unwatch_again = loop.unwatch(10)
+    let unwatch_again = loop.unwatch(s_b1)
     runner_assert_eq(r, unwatch_again, 0, "unwatching again should return 0")
+
+    loop.unwatch(s_b2)
+    tcp_close(s_b1)
+    tcp_close(s_b2)
 
     # 4. Stream Byte Buffer operations (struct methods and slicing)
     let buf = ev::buffer()

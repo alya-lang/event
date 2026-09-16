@@ -12,11 +12,12 @@ High-performance single-threaded reactor event loop, high-resolution timers, non
 ## 🌟 Features
 
 - ⚡ **Reactor Event Loop Engine**: Single-threaded non-blocking event loop capable of executing 2,500,000+ ticks/sec with dynamic sleep calculation.
+- 🚀 **OS Kernel Multiplexing (`Lib/uv`)**: High-performance I/O multiplexer powered by `Lib/uv` (`epoll` on Linux, `kqueue` on macOS/BSD, `WSAPoll` on Windows) with automatic fallback to `std/net`.
 - ⏱️ **High-Resolution Timer Queue**: Millisecond-accurate one-shot timeouts (`set_timeout`) and repeating intervals (`set_interval`) with deadline scheduling.
-- 🌐 **Non-Blocking Socket Demultiplexer**: Cross-platform socket event multiplexer (`tcp_poll`) handling concurrent connections without blocking execution.
+- 🌐 **Non-Blocking Socket Demultiplexer**: Multi-socket concurrent I/O handling thousands of simultaneous connections without blocking execution.
+- 📡 **Cross-Platform Signal Handling**: Seamless process signal watching (`watch_signal` / `unwatch_signal`) for lifecycle events (`SIGINT`, `SIGTERM`).
 - 🌊 **Stream ByteBuffer**: Chunked zero-copy byte stream assembler with line-delimited reading (`buffer_read_line`) for HTTP, NDJSON, and custom text protocols.
 - 📢 **Decoupled EventEmitter**: Blazing fast publish-subscribe pattern (4,000,000+ dispatches/sec) supporting persistent (`emitter_on`) and one-time (`emitter_once`) handlers.
-- 🛡️ **Zero External C Dependencies (Phase 1)**: Pure Alya implementation leveraging `std/net` and `clock_ms()`, ready for future epoll/IOCP/kqueue native acceleration.
 - 🧪 **100% Test Coverage**: Complete test suites for core lifecycle, timers, socket multiplexing, buffer operations, and event emissions.
 
 ---
@@ -25,28 +26,30 @@ High-performance single-threaded reactor event loop, high-resolution timers, non
 
 ```
 event/
-├── alya.toml               # Package manifest
+├── alya.toml               # Package manifest (Lib/uv dependency)
 ├── src/
 │   ├── lib.alya            # Public API facade & convenience aliases
 │   ├── types.alya          # Core struct definitions (EventLoop, Timer, IoWatcher, ByteBuffer, EventEmitter)
 │   ├── core/
-│   │   ├── loop.alya       # Event loop tick, dynamic wait capping, event collection
+│   │   ├── loop.alya       # Event loop tick, dynamic wait capping, event collection, backend discovery
 │   │   ├── timer.alya      # High-res timer queue, deadline calculation, interval rescheduling
 │   │   ├── watcher.alya    # Socket I/O watcher registry & handle management
-│   │   └── poller.alya     # Cross-platform socket multiplexer using std/net
+│   │   └── poller.alya     # Cross-platform socket multiplexer (Lib/uv with std/net fallback)
 │   ├── emitter/
 │   │   └── emitter.alya    # Decoupled publish-subscribe event emitter
 │   └── stream/
 │       └── buffer.alya     # Chunked stream byte buffer & line extractor
 ├── examples/
-│   └── demo.alya           # Full runnable showcase demo (timers, sockets, buffer, emitter)
+│   └── demo.alya           # Full runnable showcase demo (timers, sockets, buffer, emitter, backend info)
 ├── tests/
-│   ├── test_basic.alya     # Core loop, timer cancel, watcher, and buffer tests (31 tests)
-│   ├── test_timers.alya    # High-resolution timeout and interval test suite (15 tests)
-│   ├── test_emitter.alya   # EventEmitter publish/subscribe test suite (17 tests)
-│   └── test_poll.alya      # Real non-blocking TCP socket event polling test suite (16 tests)
+│   ├── test_basic.alya     # Core loop, timer cancel, watcher, and buffer tests
+│   ├── test_timers.alya    # High-resolution timeout and interval test suite
+│   ├── test_emitter.alya   # EventEmitter publish/subscribe test suite
+│   ├── test_poll.alya      # Non-blocking TCP socket event polling test suite
+│   ├── test_run.alya       # Continuous event loop execution test suite
+│   └── test_multiplexer.alya # High-concurrency multi-client kernel multiplexer test suite
 └── benches/
-    └── bench_basic.alya    # Performance micro-benchmarks (2.5M+ loop ticks/sec)
+    └── bench_basic.alya    # Performance micro-benchmarks (2.5M+ ticks/sec, 400K+ polls/sec)
 ```
 
 ---
@@ -147,7 +150,8 @@ let triggered = ev::emitter_emit(em, "order_created", {"order_id": 1001})
 
 | Function | Arguments | Returns | Description |
 |---|---|---|---|
-| `loop()` | None | `EventLoop` | Creates a new initialized `EventLoop` instance. |
+| `loop(use_uv = true)` | `use_uv = true` | `EventLoop` | Creates a new initialized `EventLoop` instance with native `Lib/uv` kernel multiplexing (or `std/net` fallback if false). |
+| `loop_backend(loop)` | `loop` | `string` | Returns active multiplexer backend (`"epoll"`, `"WSAPoll"`, `"kqueue"`, or `"std/net"`). |
 | `loop_tick(loop, max_wait_ms)` | `loop`, `max_wait_ms = 100` | `array` | Executes a single reactor cycle (dynamic sleep, poll I/O, collect timers) and returns triggered `EventNotification` records. |
 | `loop_poll(loop, max_wait_ms)` | `loop`, `max_wait_ms = 100` | `array` | Alias for `loop_tick`. Polls the event loop for up to `max_wait_ms`. |
 | `loop_run(loop, max_wait_ms, on_event)` | `loop`, `max_wait_ms = 100`, `on_event = null` | `integer` | Runs the event loop continuously until all timers and watchers complete or stop is requested. Invokes `on_event(ev)` for each event. Returns total events processed. |
@@ -165,7 +169,7 @@ let triggered = ev::emitter_emit(em, "order_created", {"order_id": 1001})
 | `set_interval(loop, interval_ms, tag, data)` | `loop`, `interval_ms`, `tag = ""`, `data = null` | `integer` | Schedules a repeating timer every `interval_ms`. Returns assigned timer ID. |
 | `clear_timer(loop, timer_id)` | `loop`, `timer_id` | `integer` | Cancels an active timeout or interval. Returns `1` if cancelled, `0` if not found. |
 
-### Socket I/O Watchers
+### Socket I/O Watchers & Signals
 
 | Function | Arguments | Returns | Description |
 |---|---|---|---|
@@ -173,7 +177,9 @@ let triggered = ev::emitter_emit(em, "order_created", {"order_id": 1001})
 | `watch_readable(loop, fd, tag, data)` | `loop`, `fd`, `tag = ""`, `data = null` | `integer` | Alias for `watch_read`. Registers socket to watch for incoming data. |
 | `watch_write(loop, fd, tag, data)` | `loop`, `fd`, `tag = ""`, `data = null` | `integer` | Registers a non-blocking socket to watch for writable readiness (`EventType.Write`). |
 | `watch_writable(loop, fd, tag = "", data = null)` | `loop`, `fd`, `tag = ""`, `data = null` | `integer` | Alias for `watch_write`. Registers socket to watch for writable readiness. |
+| `watch_signal(loop, signum, tag, data)` | `loop`, `signum`, `tag = ""`, `data = null` | `integer` | Registers an OS process signal to watch (e.g. `SIGINT`, `SIGTERM`). |
 | `unwatch(loop, fd)` | `loop`, `fd` | `integer` | Deregisters all watchers associated with socket `fd`. Returns `1` if removed, `0` if not found. |
+| `unwatch_signal(loop, signum)` | `loop`, `signum` | `integer` | Deregisters watcher for process signal `signum`. |
 
 ### Stream ByteBuffer
 
@@ -207,7 +213,8 @@ let triggered = ev::emitter_emit(em, "order_created", {"order_id": 1001})
 | `EventType.Timer` | `3` | Scheduled timer or interval expired. |
 | `EventType.Error` | `4` | Socket error or exception occurred. |
 | `EventType.Close` | `5` | Remote peer closed connection / EOF. |
-| `event_type_name(t)` | String | Converts integer event constant into human-readable string (`"READ"`, `"TIMER"`, etc.). |
+| `EventType.Signal` | `6` | Operating system process signal received. |
+| `event_type_name(t)` | String | Converts integer event constant into human-readable string (`"READ"`, `"TIMER"`, `"SIGNAL"`, etc.). |
 
 ---
 
@@ -216,10 +223,18 @@ let triggered = ev::emitter_emit(em, "order_created", {"order_id": 1001})
 Run the complete automated test suite:
 
 ```bash
+alyac test .
+```
+
+Or run individual test suites:
+
+```bash
 alyac run tests/test_basic.alya
 alyac run tests/test_timers.alya
 alyac run tests/test_emitter.alya
 alyac run tests/test_poll.alya
+alyac run tests/test_run.alya
+alyac run tests/test_multiplexer.alya
 ```
 
 Run the performance micro-benchmarks:

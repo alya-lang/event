@@ -1,0 +1,114 @@
+# Integration and stress test suite for native OS kernel multiplexing in Lib/event
+import "std/test"
+import "std/net"
+import "../src/lib.alya" as ev
+
+function main()
+    test_suite("event Kernel Multiplexer Integration Suite")
+    let r = runner_new()
+
+    # 1. Active Kernel Multiplexer Detection
+    let loop = ev::loop()
+    let b = loop.backend()
+    runner_assert(r, len(b) > 0, "kernel multiplexer backend should be identified")
+    runner_assert(r, b != "fallback" and b != "none", "backend should be native OS kernel multiplexer")
+    runner_assert_eq(r, loop.active_count(), 0, "initial active count is 0")
+
+    # 2. Multi-socket concurrent I/O Multiplexing (C10K-style reactor model)
+    let srv_port = 19888
+    let srv = tcp_listen(srv_port, 16)
+    runner_assert(r, srv >= 0, "server listening on port 19888")
+    tcp_set_nonblocking(srv, 1)
+
+    let srv_wid = loop.watch_readable(srv, "srv_listener", "server_data")
+    runner_assert(r, srv_wid >= 1, "listener registered in kernel poller")
+    runner_assert_eq(r, loop.active_count(), 1, "active count is 1")
+
+    # Connect client 1
+    let c1 = tcp_connect("127.0.0.1", srv_port)
+    runner_assert(r, c1 >= 0, "client 1 connected")
+
+    let srv_events = []
+    let att1 = 0
+    while len(srv_events) == 0 and att1 < 10
+        srv_events = loop.poll(50)
+        att1 += 1
+    end
+    runner_assert(r, len(srv_events) >= 1, "kernel woke up loop for client 1 connection")
+    runner_assert_eq(r, srv_events[0].fd, srv, "event fd is server socket")
+    runner_assert_eq(r, srv_events[0].event_type, ev::EventType.Read, "event is READ")
+
+    let a1 = tcp_accept(srv)
+    runner_assert(r, a1 >= 0, "server accepted client 1")
+    tcp_set_nonblocking(a1, 1)
+
+    let a1_wid = loop.watch_readable(a1, "client1_stream", null)
+    runner_assert(r, a1_wid > srv_wid, "accepted client 1 registered in poller")
+
+    # Connect client 2
+    let c2 = tcp_connect("127.0.0.1", srv_port)
+    runner_assert(r, c2 >= 0, "client 2 connected")
+
+    let srv_events2 = []
+    let att2 = 0
+    while len(srv_events2) == 0 and att2 < 10
+        srv_events2 = loop.poll(50)
+        att2 += 1
+    end
+    runner_assert(r, len(srv_events2) >= 1, "kernel woke up loop for client 2 connection")
+
+    let a2 = tcp_accept(srv)
+    runner_assert(r, a2 >= 0, "server accepted client 2")
+    tcp_set_nonblocking(a2, 1)
+
+    let a2_wid = loop.watch_readable(a2, "client2_stream", null)
+    runner_assert(r, a2_wid > a1_wid, "accepted client 2 registered in poller")
+    runner_assert_eq(r, loop.active_count(), 3, "active count is 3 (srv + a1 + a2)")
+
+    # Send data from client 2 only
+    tcp_send(c2, "HELLO_FROM_CLIENT_2")
+    let data_events = []
+    let att3 = 0
+    while len(data_events) == 0 and att3 < 10
+        data_events = loop.poll(50)
+        att3 += 1
+    end
+    runner_assert(r, len(data_events) >= 1, "kernel detected incoming data from client 2")
+    runner_assert_eq(r, data_events[0].fd, a2, "data event belongs specifically to socket a2")
+    runner_assert_str_eq(r, data_events[0].tag, "client2_stream", "event tag matches client2_stream")
+
+    let rec2 = tcp_recv(a2, 1024)
+    runner_assert_str_eq(r, rec2, "HELLO_FROM_CLIENT_2", "payload from client 2 matches")
+
+    # Send data from client 1
+    tcp_send(c1, "HELLO_FROM_CLIENT_1")
+    let data_events1 = []
+    let att4 = 0
+    while len(data_events1) == 0 and att4 < 10
+        data_events1 = loop.poll(50)
+        att4 += 1
+    end
+    runner_assert(r, len(data_events1) >= 1, "kernel detected incoming data from client 1")
+    runner_assert_eq(r, data_events1[0].fd, a1, "data event belongs specifically to socket a1")
+
+    let rec1 = tcp_recv(a1, 1024)
+    runner_assert_str_eq(r, rec1, "HELLO_FROM_CLIENT_1", "payload from client 1 matches")
+
+    # Clean up multi-socket test
+    loop.unwatch(srv)
+    loop.unwatch(a1)
+    loop.unwatch(a2)
+    tcp_close(c1)
+    tcp_close(c2)
+    tcp_close(a1)
+    tcp_close(a2)
+    tcp_close(srv)
+    runner_assert_eq(r, loop.active_count(), 0, "active watchers 0 after unwatching all")
+
+    loop.free()
+    runner_assert_eq(r, loop.is_running(), 0, "loop freed")
+
+    runner_summary(r)
+end
+
+main()

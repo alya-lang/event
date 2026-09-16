@@ -8,6 +8,7 @@ import "../src/lib.alya" as ev
 function demo_timers()
     say "1. Initializing EventLoop and Scheduling Timers..."
     let loop = ev::loop()
+    say "   Active Kernel Multiplexer: " + loop.backend()
 
     let t1 = ev::set_timeout(loop, 40, "one_shot_timer", null)
     let t2 = ev::set_interval(loop, 20, "interval_heartbeat", 1)
@@ -32,8 +33,9 @@ end
 
 # --- 2. Non-Blocking TCP Event Demultiplexer Demonstration ---
 function demo_sockets()
-    say "\n2. Non-Blocking TCP Socket Demultiplexing..."
+    say "\n2. Non-Blocking TCP Socket Demultiplexing (Kernel Multiplexed)..."
     let loop = ev::loop()
+    say "   Multiplexer Backend: " + loop.backend()
     let echo_port = 19999
     let server = tcp_listen(echo_port, 5)
     tcp_set_nonblocking(server, 1)

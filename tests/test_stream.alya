@@ -1,0 +1,96 @@
+# Test suite for TcpStream Flow Control, Backpressure, and Framing
+import "std/test"
+import "std/net"
+import "../src/lib.alya" as ev
+
+struct LineStore
+    lines
+end
+
+function handle_server_line(stream, line)
+    let s = stream.data
+    push(s.lines, line)
+end
+
+function main()
+    test_suite("event Package TcpStream & Flow Control Test Suite")
+    let r = runner_new()
+
+    let l = ev::loop()
+    let port = 19991
+
+    # Setup server socket
+    let srv = tcp_listen(port, 5)
+    tcp_set_nonblocking(srv, 1)
+
+    # Connect client
+    let client_raw = tcp_connect("127.0.0.1", port)
+    let accepted_raw = tcp_accept(srv)
+
+    runner_assert(r, client_raw >= 0, "client socket created")
+    runner_assert(r, accepted_raw >= 0, "server accepted connection")
+
+    # Wrap both into TcpStream
+    let client_stream = ev::stream(l, client_raw, 64) # 64 bytes high water mark
+    let server_stream = ev::stream(l, accepted_raw, 64)
+
+    runner_assert_eq(r, client_stream.is_closed(), 0, "client stream should be open")
+    runner_assert_eq(r, server_stream.is_closed(), 0, "server stream should be open")
+    runner_assert_eq(r, client_stream.is_paused(), 0, "client stream should not be paused")
+
+    # 1. Flow Control: pause and resume
+    let p_res = client_stream.pause()
+    runner_assert_eq(r, p_res, 1, "pause returned 1")
+    runner_assert_eq(r, client_stream.is_paused(), 1, "client stream is paused")
+
+    let r_res = client_stream.resume()
+    runner_assert_eq(r, r_res, 1, "resume returned 1")
+    runner_assert_eq(r, client_stream.is_paused(), 0, "client stream is unpaused")
+
+    # 2. Non-blocking write & Line framing over TcpStream
+    let store = LineStore { lines: [] }
+    server_stream.data = store
+    server_stream.on_line(handle_server_line)
+
+    # Write multiple lines from client to server
+    client_stream.write("MessageOne\r\nMessageTwo\n")
+
+    # Run loop tick to process network transmission
+    let ticks = 0
+    while len(store.lines) < 2 and ticks < 10
+        let events = l.tick(10)
+        for ev in events
+            l.dispatch(ev)
+        end
+        ticks += 1
+    end
+
+    runner_assert_eq(r, len(store.lines), 2, "server received 2 framed lines")
+    if len(store.lines) >= 2
+        runner_assert_str_eq(r, store.lines[0], "MessageOne", "line 1 match")
+        runner_assert_str_eq(r, store.lines[1], "MessageTwo", "line 2 match")
+    end
+
+    # 3. Backpressure detection
+    # High water mark is 64 bytes. If buffer exceeds, write returns 0
+    let big_payload = "1234567890123456789012345678901234567890123456789012345678901234567890" # 70 bytes
+    client_stream.write_buf.append(big_payload) # manually force write buffer to exceed high water mark
+    let bp_write = client_stream.write("extra")
+    runner_assert_eq(r, bp_write, 0, "write returns 0 when high water mark is reached")
+
+    # Drain buffer
+    client_stream.write_buf.clear()
+    runner_assert_eq(r, client_stream.buffered_bytes(), 0, "buffer cleared to 0")
+
+    # 4. Stream Close Lifecycle
+    client_stream.close()
+    server_stream.close()
+    tcp_close(srv)
+
+    runner_assert_eq(r, client_stream.is_closed(), 1, "client stream closed")
+    runner_assert_eq(r, server_stream.is_closed(), 1, "server stream closed")
+
+    runner_summary(r)
+end
+
+main()

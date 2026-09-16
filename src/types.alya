@@ -166,3 +166,53 @@ pub function event_emitter_new()
         next_id: 1
     }
 end
+
+# --- Circular Ring Buffer Definition ---
+pub struct RingBuffer
+    raw,
+    size,
+    capacity
+end
+
+# --- Buffered Stream Reader Definition ---
+pub struct StreamReader
+    ring,
+    delimiter,
+    max_frame_size
+end
+
+# --- High-Level TCP Stream Definition ---
+pub struct TcpStream
+    loop,
+    fd,
+    peer_addr,
+    tag,
+    data,
+    closed,
+    paused,
+    high_water_mark,
+    write_buf,
+    reader,
+    peer_ip,
+    peer_port,
+    on_data_cb,
+    on_line_cb,
+    on_close_cb,
+    on_error_cb,
+    on_drain_cb
+end
+
+# --- High-Level TCP Server Definition ---
+pub struct TcpServer
+    loop,
+    fd,
+    host,
+    tag,
+    data,
+    port,
+    backlog,
+    listening,
+    on_connect_cb,
+    on_error_cb,
+    clients
+end

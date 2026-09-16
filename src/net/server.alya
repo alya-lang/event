@@ -1,0 +1,126 @@
+# Event-Driven TCP Server
+# Part of the Alya Language package ecosystem (https://github.com/alya-lang)
+
+import "std/net"
+import "../types.alya"
+import "../stream/stream.alya"
+
+# Creates and binds an event-driven TCP server to the specified host and port.
+# Incoming client connections are automatically wrapped in TcpStream instances
+# and dispatched to on_connect(server, client_stream).
+pub function tcp_server_listen(loop, host, port, on_connect, on_error = null, backlog = 128)
+    if loop is null or port is null or port <= 0
+        return null
+    end
+    if backlog is null or backlog <= 0
+        backlog = 128
+    end
+
+    let srv_fd = tcp_listen(port, backlog)
+    if srv_fd < 0
+        if on_error is not null
+            on_error(null, "Failed to bind or listen on port " + str(port))
+        end
+        return null
+    end
+
+    tcp_set_nonblocking(srv_fd, 1)
+
+    let server = TcpServer {
+        loop: loop,
+        fd: srv_fd,
+        host: host,
+        tag: "tcp_server",
+        data: null,
+        port: port,
+        backlog: backlog,
+        listening: 1,
+        on_connect_cb: on_connect,
+        on_error_cb: on_error,
+        clients: []
+    }
+
+    # Register server socket with the event loop
+    loop.watch_read(srv_fd, "tcp_server", server)
+    return server
+end
+
+# Accepts incoming client connections non-blockingly and wraps each in a TcpStream
+pub function tcp_server_accept(server)
+    if server is null or server.listening == 0 or server.fd < 0
+        return 0
+    end
+    let count = 0
+    while 1
+        let client_fd = tcp_accept(server.fd)
+        if client_fd < 0
+            break
+        end
+        let stream = tcp_stream_new(server.loop, client_fd)
+        push(server.clients, stream)
+        count += 1
+
+        let cb = server.on_connect_cb
+        if cb is not null
+            cb(server, stream)
+        end
+    end
+    return count
+end
+
+pub function TcpServer.accept_connections(self)
+    return tcp_server_accept(self)
+end
+
+# Stops server, closes all active connected client streams, and closes listener socket
+pub function tcp_server_close(server)
+    if server is null or server.listening == 0
+        return 0
+    end
+    server.listening = 0
+    server.loop.unwatch(server.fd)
+
+    for client in server.clients
+        tcp_stream_close(client)
+    end
+    server.clients = []
+
+    tcp_close(server.fd)
+    return 1
+end
+
+pub function TcpServer.close(self)
+    return tcp_server_close(self)
+end
+
+# Returns count of currently connected active client streams
+pub function TcpServer.client_count(self)
+    if self is null
+        return 0
+    end
+    return len(self.clients)
+end
+
+# Returns 1 if server is actively listening, 0 otherwise
+pub function TcpServer.is_listening(self)
+    if self is null
+        return 0
+    end
+    return self.listening == 1
+end
+
+# Registers or updates the connection callback: function(server, client_stream)
+pub function TcpServer.on_connect(self, callback)
+    if self is not null
+        self.on_connect_cb = callback
+    end
+    return self
+end
+
+# Registers or updates the error callback: function(server, error_msg)
+pub function TcpServer.on_error(self, callback)
+    if self is not null
+        self.on_error_cb = callback
+    end
+    return self
+end

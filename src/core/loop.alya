@@ -6,6 +6,8 @@ import "../types.alya"
 import "./timer.alya"
 import "./watcher.alya"
 import "./poller.alya"
+import "../stream/stream.alya"
+import "../net/server.alya"
 
 # Creates a new initialized EventLoop instance
 # Backed by high-performance OS kernel multiplexer (Lib/uv) with fallback to std/net
@@ -127,8 +129,61 @@ pub function loop_poll(loop, max_wait_ms = 100)
     return loop_tick(loop, max_wait_ms)
 end
 
+# Dispatches an event notification to its registered handler or callbacks
+pub function loop_dispatch_event(ev)
+    if ev is null or ev.data is null
+        return 0
+    end
+    let tag = ev.tag
+    if tag == "tcp_server"
+        let srv = ev.data
+        tcp_server_accept(srv)
+        return 1
+    end
+    if tag == "tcp_stream_read"
+        let stream = ev.data
+        if ev.event_type == EventType.Read
+            tcp_stream_read(stream)
+        end
+        return 1
+    end
+    if tag == "tcp_stream_write"
+        let stream = ev.data
+        if ev.event_type == EventType.Write
+            tcp_stream_flush(stream)
+        end
+        return 1
+    end
+    if tag == "tcp_stream_rw"
+        let stream = ev.data
+        if ev.event_type == EventType.Read
+            tcp_stream_read(stream)
+        elif ev.event_type == EventType.Write
+            tcp_stream_flush(stream)
+        end
+        return 1
+    end
+    if tag == "readable"
+        let cb = ev.data
+        cb(ev.fd)
+        return 1
+    end
+    if tag == "writable"
+        let cb = ev.data
+        cb(ev.fd)
+        return 1
+    end
+    if tag == "callback" or tag == "timeout" or tag == "interval"
+        let cb = ev.data
+        cb(ev)
+        return 1
+    end
+    return 0
+end
+
 # Continuously runs the event loop until stop is requested or no active handles remain.
 # If on_event callback is provided, it is invoked for each triggered event.
+# Otherwise, events are dispatched automatically to registered handlers.
 # Returns total number of events processed across all iterations.
 pub function loop_run(loop, max_wait_ms = 100, on_event = null)
     if loop is null
@@ -139,9 +194,11 @@ pub function loop_run(loop, max_wait_ms = 100, on_event = null)
         let events = loop_tick(loop, max_wait_ms)
         if len(events) > 0
             total_events += len(events)
-            if on_event is not null
-                for ev in events
+            for ev in events
+                if on_event is not null
                     on_event(ev)
+                else
+                    loop_dispatch_event(ev)
                 end
             end
         end
@@ -285,4 +342,16 @@ end
 
 pub function EventLoop.unwatch(self, fd)
     return watcher_remove(self, fd)
+end
+
+pub function EventLoop.on_readable(self, fd, callback)
+    return watcher_add(self, fd, 1, "readable", callback)
+end
+
+pub function EventLoop.on_writable(self, fd, callback)
+    return watcher_add(self, fd, 2, "writable", callback)
+end
+
+pub function EventLoop.dispatch(self, ev)
+    return loop_dispatch_event(ev)
 end

@@ -70,6 +70,29 @@ function main()
     tcp_close(s_bench)
     loop3.free()
 
+    # 6. StreamReader Line Framing & Packet Assembly
+    let rdr = ev::reader("\n")
+    bench_start(runner, 20000)
+    let p = 0
+    while p < 20000
+        rdr.feed("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n")
+        rdr.read_line()
+        rdr.read_line()
+        p += 1
+    end
+    bench_stop(runner, "StreamReader feed + read_line x2 (20,000 ops)")
+
+    # 7. RingBuffer High-Speed Churn
+    let rng = ev::ring(1024)
+    bench_start(runner, 25000)
+    let q = 0
+    while q < 25000
+        rng.write("PING_PAYLOAD_CHUNK_1234567890")
+        rng.read(30)
+        q += 1
+    end
+    bench_stop(runner, "RingBuffer write + read throughput (25,000 ops)")
+
     bench_summary(runner)
 end
 

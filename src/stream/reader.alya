@@ -1,0 +1,103 @@
+# Buffered Stream Reader & Framing Abstraction
+# Part of the Alya Language package ecosystem (https://github.com/alya-lang)
+
+import "std/str"
+import "../types.alya"
+import "./ring.alya"
+
+# Constructs a new StreamReader instance
+pub function stream_reader_new(delimiter = "\n", max_frame_size = 1048576, capacity = 65536)
+    if delimiter is null or len(delimiter) == 0
+        delimiter = "\n"
+    end
+    if max_frame_size is null or max_frame_size <= 0
+        max_frame_size = 1048576
+    end
+    return StreamReader {
+        ring: ring_buffer_new(capacity),
+        delimiter: delimiter,
+        max_frame_size: max_frame_size
+    }
+end
+
+# Appends an incoming raw network chunk into the reader buffer
+pub function StreamReader.feed(self, chunk)
+    if self is null or chunk is null or len(chunk) == 0
+        return 0
+    end
+    return self.ring.write(chunk)
+end
+
+# Extracts the next line terminated by \n (with optional \r stripped)
+# Returns [line, has_line (1 or 0)]
+pub function StreamReader.read_line(self)
+    if self is null or self.ring.available() == 0
+        return ["", 0]
+    end
+    let idx = index_of(self.ring.raw, "\n")
+    if idx < 0
+        return ["", 0]
+    end
+    let raw = self.ring.read(idx + 1)
+    let line = raw[0..idx]
+    if len(line) > 0 and line[(len(line) - 1)..len(line)] == "\r"
+        line = line[0..(len(line) - 1)]
+    end
+    return [line, 1]
+end
+
+# Extracts a framed message payload up to delimiter `delim`
+# Consumes the delimiter and returns [payload, has_message (1 or 0)]
+pub function StreamReader.read_until(self, delim)
+    if self is null or self.ring.available() == 0 or delim is null or len(delim) == 0
+        return ["", 0]
+    end
+    let idx = index_of(self.ring.raw, delim)
+    if idx < 0
+        return ["", 0]
+    end
+    let payload = self.ring.raw[0..idx]
+    self.ring.read(idx + len(delim))
+    return [payload, 1]
+end
+
+# Extracts a fixed-length payload of exactly n bytes
+# Returns [chunk, has_chunk (1 or 0)]
+pub function StreamReader.read_bytes(self, n)
+    if self is null or n is null or n <= 0 or self.ring.available() < n
+        return ["", 0]
+    end
+    let payload = self.ring.read(n)
+    return [payload, 1]
+end
+
+# Peeks up to n bytes from the reader without consuming them
+pub function StreamReader.peek(self, n)
+    if self is null
+        return ""
+    end
+    return self.ring.peek(n)
+end
+
+# Returns total bytes currently buffered in the reader
+pub function StreamReader.available(self)
+    if self is null
+        return 0
+    end
+    return self.ring.available()
+end
+
+# Clears all buffered data from the reader
+pub function StreamReader.clear(self)
+    if self is not null
+        self.ring.clear()
+    end
+end
+
+# Returns 1 if reader has no buffered data, 0 otherwise
+pub function StreamReader.is_empty(self)
+    if self is null
+        return 1
+    end
+    return self.ring.is_empty()
+end

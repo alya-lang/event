@@ -1,0 +1,336 @@
+# High-Level TCP Stream with Flow Control & Backpressure
+# Part of the Alya Language package ecosystem (https://github.com/alya-lang)
+
+import "std/net"
+import "../types.alya"
+import "./buffer.alya"
+import "./reader.alya"
+import "../core/watcher.alya"
+
+# Constructs and initializes a new TcpStream over socket descriptor fd
+pub function tcp_stream_new(loop, fd, high_water_mark = 65536)
+    if loop is null or fd is null or fd < 0
+        return null
+    end
+    if high_water_mark is null or high_water_mark <= 0
+        high_water_mark = 65536
+    end
+
+    tcp_set_nonblocking(fd, 1)
+
+    let stream = TcpStream {
+        loop: loop,
+        fd: fd,
+        peer_addr: tcp_peer_addr(fd),
+        tag: "tcp_stream",
+        data: null,
+        closed: 0,
+        paused: 0,
+        high_water_mark: high_water_mark,
+        write_buf: byte_buffer_new(),
+        reader: stream_reader_new("\n"),
+        peer_ip: tcp_peer_ip(fd),
+        peer_port: tcp_peer_port(fd),
+        on_data_cb: null,
+        on_line_cb: null,
+        on_close_cb: null,
+        on_error_cb: null,
+        on_drain_cb: null
+    }
+
+    # Register initial readable watcher with the reactor loop
+    loop.watch_read(fd, "tcp_stream_read", stream)
+    return stream
+end
+
+# Non-blocking write operation with backpressure protection.
+pub function tcp_stream_write(stream, data)
+    if stream is null or stream.closed == 1
+        return -1
+    end
+    if data is null or len(data) == 0
+        return 1
+    end
+
+    # If pending bytes already exist in write buffer, preserve sequential ordering
+    if stream.write_buf.len() > 0
+        stream.write_buf.append(data)
+        stream.loop.watch_write(stream.fd, "tcp_stream_write", stream)
+        if stream.write_buf.len() >= stream.high_water_mark
+            return 0
+        end
+        return 1
+    end
+
+    # Attempt direct non-blocking transmission
+    let sent = tcp_send(stream.fd, data)
+    if sent < 0
+        # Would block or socket error: queue into write buffer
+        stream.write_buf.append(data)
+        stream.loop.watch_write(stream.fd, "tcp_stream_write", stream)
+        if stream.write_buf.len() >= stream.high_water_mark
+            return 0
+        end
+        return 1
+    end
+
+    if sent < len(data)
+        # Partial transmission: buffer the unsent remainder
+        let remainder = data[sent..len(data)]
+        stream.write_buf.append(remainder)
+        stream.loop.watch_write(stream.fd, "tcp_stream_write", stream)
+        if stream.write_buf.len() >= stream.high_water_mark
+            return 0
+        end
+        return 1
+    end
+
+    # All bytes transmitted immediately
+    return 1
+end
+
+pub function TcpStream.write(self, data)
+    return tcp_stream_write(self, data)
+end
+
+# Flushes pending bytes from write buffer when socket becomes writable
+pub function tcp_stream_flush(stream)
+    if stream is null or stream.closed == 1
+        return 0
+    end
+    if stream.write_buf.len() == 0
+        # Nothing pending, restore reading mode
+        if stream.paused == 1
+            stream.loop.unwatch(stream.fd)
+        else
+            stream.loop.watch_read(stream.fd, "tcp_stream_read", stream)
+        end
+        return 1
+    end
+
+    let pending = stream.write_buf.to_string()
+    let sent = tcp_send(stream.fd, pending)
+    if sent > 0
+        if sent >= len(pending)
+            stream.write_buf.clear()
+            if stream.paused == 1
+                stream.loop.unwatch(stream.fd)
+            else
+                stream.loop.watch_read(stream.fd, "tcp_stream_read", stream)
+            end
+            # Buffer drained! Notify caller
+            let cb = stream.on_drain_cb
+            if cb is not null
+                cb(stream)
+            end
+            return 1
+        else
+            let remainder = pending[sent..len(pending)]
+            stream.write_buf.clear()
+            stream.write_buf.append(remainder)
+            return 0
+        end
+    end
+    return 0
+end
+
+pub function TcpStream.flush(self)
+    return tcp_stream_flush(self)
+end
+
+# Reads incoming chunk from socket, feeds reader, and dispatches callbacks
+pub function tcp_stream_read(stream, max_bytes = 4096)
+    if stream is null or stream.closed == 1 or stream.paused == 1
+        return ""
+    end
+    if max_bytes is null or max_bytes <= 0
+        max_bytes = 4096
+    end
+
+    let chunk = tcp_recv(stream.fd, max_bytes)
+    if chunk == ""
+        # Peer disconnected or EOF
+        tcp_stream_close(stream)
+        return ""
+    end
+
+    stream.reader.feed(chunk)
+
+    # 1. Dispatch on_data callback
+    let d_cb = stream.on_data_cb
+    if d_cb is not null
+        d_cb(stream, chunk)
+    end
+
+    # 2. Dispatch on_line callback for all parsed lines
+    let l_cb = stream.on_line_cb
+    if l_cb is not null
+        let has_more = 1
+        while has_more == 1
+            let res = stream.reader.read_line()
+            if res[1] == 1
+                l_cb(stream, res[0])
+            else
+                has_more = 0
+            end
+        end
+    end
+
+    return chunk
+end
+
+pub function TcpStream.read(self, max_bytes = 4096)
+    return tcp_stream_read(self, max_bytes)
+end
+
+# Pauses incoming reads from the socket (Flow Control)
+pub function tcp_stream_pause(stream)
+    if stream is null or stream.closed == 1 or stream.paused == 1
+        return 0
+    end
+    stream.paused = 1
+    if stream.write_buf.len() > 0
+        stream.loop.watch_write(stream.fd, "tcp_stream_write", stream)
+    else
+        stream.loop.unwatch(stream.fd)
+    end
+    return 1
+end
+
+pub function TcpStream.pause(self)
+    return tcp_stream_pause(self)
+end
+
+# Resumes incoming reads from the socket (Flow Control)
+pub function tcp_stream_resume(stream)
+    if stream is null or stream.closed == 1 or stream.paused == 0
+        return 0
+    end
+    stream.paused = 0
+    if stream.write_buf.len() > 0
+        watcher_add(stream.loop, stream.fd, 3, "tcp_stream_rw", stream)
+    else
+        stream.loop.watch_read(stream.fd, "tcp_stream_read", stream)
+    end
+    return 1
+end
+
+pub function TcpStream.resume(self)
+    return tcp_stream_resume(self)
+end
+
+# Closes socket and unregisters all watchers from event loop
+pub function tcp_stream_close(stream)
+    if stream is null or stream.closed == 1
+        return 0
+    end
+    stream.closed = 1
+    stream.loop.unwatch(stream.fd)
+    tcp_close(stream.fd)
+    let cb = stream.on_close_cb
+    if cb is not null
+        cb(stream)
+    end
+    return 1
+end
+
+pub function TcpStream.close(self)
+    return tcp_stream_close(self)
+end
+
+# Registers a raw data chunk callback: function(stream, chunk)
+pub function stream_on_data(stream, callback)
+    if stream is not null
+        stream.on_data_cb = callback
+    end
+    return stream
+end
+
+pub function TcpStream.on_data(self, callback)
+    return stream_on_data(self, callback)
+end
+
+# Registers a line-delimited message callback: function(stream, line)
+pub function stream_on_line(stream, callback)
+    if stream is not null
+        stream.on_line_cb = callback
+    end
+    return stream
+end
+
+pub function TcpStream.on_line(self, callback)
+    return stream_on_line(self, callback)
+end
+
+# Functional aliases for stream operations
+pub function stream_write(stream, data)
+    return tcp_stream_write(stream, data)
+end
+
+pub function stream_flush(stream)
+    return tcp_stream_flush(stream)
+end
+
+pub function stream_read(stream, max_bytes = 4096)
+    return tcp_stream_read(stream, max_bytes)
+end
+
+pub function stream_pause(stream)
+    return tcp_stream_pause(stream)
+end
+
+pub function stream_resume(stream)
+    return tcp_stream_resume(stream)
+end
+
+pub function stream_close(stream)
+    return tcp_stream_close(stream)
+end
+
+# Registers a socket disconnect / close callback: function(stream)
+pub function TcpStream.on_close(self, callback)
+    if self is not null
+        self.on_close_cb = callback
+    end
+    return self
+end
+
+# Registers an error callback: function(stream, error_msg)
+pub function TcpStream.on_error(self, callback)
+    if self is not null
+        self.on_error_cb = callback
+    end
+    return self
+end
+
+# Registers a write buffer drain callback: function(stream)
+pub function TcpStream.on_drain(self, callback)
+    if self is not null
+        self.on_drain_cb = callback
+    end
+    return self
+end
+
+# Returns 1 if stream is paused, 0 otherwise
+pub function TcpStream.is_paused(self)
+    if self is null
+        return 0
+    end
+    return self.paused == 1
+end
+
+# Returns 1 if stream is closed, 0 otherwise
+pub function TcpStream.is_closed(self)
+    if self is null
+        return 1
+    end
+    return self.closed == 1
+end
+
+# Returns count of pending unsent bytes in write buffer
+pub function TcpStream.buffered_bytes(self)
+    if self is null
+        return 0
+    end
+    return self.write_buf.len()
+end

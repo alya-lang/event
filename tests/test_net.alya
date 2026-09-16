@@ -1,0 +1,102 @@
+# End-to-End Test Suite for TcpServer and TcpClient abstractions
+import "std/test"
+import "../src/types.alya"
+import "../src/lib.alya" as ev
+
+struct NetTestContext
+    server_received,
+    client_received
+end
+
+function handle_request(stream, line)
+    let c = stream.data
+    push(c.server_received, line)
+    # Echo response back to client
+    ev::stream_write(stream, "ECHO:" + line + "\n")
+end
+
+function handle_server_client(server, client_stream)
+    let ctx = server.data
+    client_stream.data = ctx
+    ev::stream_on_line(client_stream, handle_request)
+end
+
+function handle_client_line(stream, line)
+    let ctx = stream.data
+    push(ctx.client_received, line)
+end
+
+function main()
+    test_suite("event Package TcpServer & TcpClient End-to-End Test Suite")
+    let r = runner_new()
+
+    let l = ev::loop()
+    let port = 19992
+
+    let ctx = NetTestContext {
+        server_received: [],
+        client_received: []
+    }
+
+    # 1. Start event-driven TCP Server
+    let server = ev::server(l, "127.0.0.1", port, handle_server_client)
+    server.data = ctx
+
+    runner_assert(r, server is not null, "server started successfully")
+    runner_assert_eq(r, server.is_listening(), 1, "server is actively listening")
+    runner_assert_eq(r, server.client_count(), 0, "initial client count should be 0")
+
+    # 2. Connect client non-blockingly
+    let client = ev::client(l, "127.0.0.1", port)
+    runner_assert(r, client is not null, "client connected successfully")
+    client.data = ctx
+    ev::stream_on_line(client, handle_client_line)
+
+    # Allow server to accept connection
+    let ticks = 0
+    while server.client_count() == 0 and ticks < 10
+        let events = l.tick(10)
+        for ev in events
+            l.dispatch(ev)
+        end
+        ticks += 1
+    end
+
+    runner_assert_eq(r, server.client_count(), 1, "server registered 1 active connected client")
+
+    # 3. Client transmits request messages
+    ev::stream_write(client, "HELLO_SERVER\nSECOND_REQUEST\n")
+
+    # Pump reactor loop until echoes are received
+    ticks = 0
+    while len(ctx.client_received) < 2 and ticks < 20
+        let events = l.tick(10)
+        for ev in events
+            l.dispatch(ev)
+        end
+        ticks += 1
+    end
+
+    runner_assert_eq(r, len(ctx.server_received), 2, "server processed 2 request lines")
+    if len(ctx.server_received) >= 2
+        runner_assert_str_eq(r, ctx.server_received[0], "HELLO_SERVER", "server line 1 matches")
+        runner_assert_str_eq(r, ctx.server_received[1], "SECOND_REQUEST", "server line 2 matches")
+    end
+
+    runner_assert_eq(r, len(ctx.client_received), 2, "client received 2 echo replies")
+    if len(ctx.client_received) >= 2
+        runner_assert_str_eq(r, ctx.client_received[0], "ECHO:HELLO_SERVER", "echo line 1 matches")
+        runner_assert_str_eq(r, ctx.client_received[1], "ECHO:SECOND_REQUEST", "echo line 2 matches")
+    end
+
+    # 4. Graceful Teardown
+    ev::stream_close(client)
+    let closed = ev::tcp_server_close(server)
+    runner_assert_eq(r, closed, 1, "server.close() returned 1")
+    runner_assert_eq(r, server.is_listening(), 0, "server is no longer listening")
+    runner_assert_eq(r, server.client_count(), 0, "active client map is empty")
+
+    runner_summary(r)
+end
+
+main()

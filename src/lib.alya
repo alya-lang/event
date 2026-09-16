@@ -9,6 +9,11 @@ import "./core/watcher.alya"
 import "./core/poller.alya"
 import "./emitter/emitter.alya"
 import "./stream/buffer.alya"
+import "./stream/ring.alya"
+import "./stream/reader.alya"
+import "./stream/stream.alya"
+import "./net/server.alya"
+import "./net/client.alya"
 
 # --- Convenience Aliases ---
 
@@ -84,4 +89,34 @@ end
 # Convenience alias for unwatching an OS process signal
 pub function unwatch_signal(loop, signum)
     return loop_unwatch_signal(loop, signum)
+end
+
+# Factory alias for RingBuffer
+pub function ring(capacity = 65536)
+    return ring_buffer_new(capacity)
+end
+
+# Factory alias for StreamReader
+pub function reader(delimiter = "\n", max_frame_size = 1048576, capacity = 65536)
+    return stream_reader_new(delimiter, max_frame_size, capacity)
+end
+
+# Factory alias for TcpStream
+pub function stream(loop, fd, high_water_mark = 65536)
+    return tcp_stream_new(loop, fd, high_water_mark)
+end
+
+# Factory alias for TcpServer
+pub function server(loop, host, port, on_connect, on_error = null, backlog = 128)
+    return tcp_server_listen(loop, host, port, on_connect, on_error, backlog)
+end
+
+# Factory alias for TcpClient
+pub function client(loop, host, port, on_connect = null, on_error = null)
+    return tcp_client_connect(loop, host, port, on_connect, on_error)
+end
+
+# Convenience dispatcher for event notifications
+pub function dispatch(ev)
+    return loop_dispatch_event(ev)
 end

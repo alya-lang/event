@@ -100,13 +100,77 @@ function demo_emitter()
     end
 end
 
-function main()
-    say "=== Alya Event Engine (Lib/event) Showcase ===\n"
-    demo_timers()
-    demo_sockets()
-    demo_buffer()
-    demo_emitter()
-    say "\n🎉 Lib/event demonstration completed successfully!"
+# --- 5. StreamReader & RingBuffer Framing Demonstration ---
+function demo_stream_reader()
+    say "\n5. StreamReader & RingBuffer Message Framing..."
+    let rdr = ev::reader("\n")
+    say "   Feeding partial HTTP chunks into StreamReader..."
+    rdr.feed("POST /v1/telemetry HTTP/1.1\r\n")
+    rdr.feed("Host: api.alya-lang.org\r\n")
+    rdr.feed("Content-Type: application/json\r\n\r\n")
+
+    let l1 = rdr.read_line()
+    say "   Parsed Request Line: " + l1[0]
+    let l2 = rdr.read_line()
+    say "   Parsed Header 1    : " + l2[0]
+    let l3 = rdr.read_line()
+    say "   Parsed Header 2    : " + l3[0]
+
+    let ring = ev::ring(64)
+    ring.write("PAYLOAD_PACKET")
+    say "   RingBuffer capacity: " + str(ring.capacity) + ", buffered: " + str(ring.available())
+    say "   Peeked: " + ring.peek(7)
 end
 
-main()
+# --- 6. Event-Driven TcpServer & TcpClient Demonstration ---
+function demo_tcp_server()
+    say "\n6. Event-Driven TcpServer & TcpClient with High-Level Streams..."
+    let loop = ev::loop()
+    let port = 19998
+
+    # High-level event-driven server
+    let srv = ev::server(loop, "127.0.0.1", port, function(server, client_stream)
+        say "   [Server] New client connected from " + client_stream.peer_addr
+        ev::stream_on_line(client_stream, function(stream, line)
+            say "   [Server] Received message: '" + line + "'"
+            ev::stream_write(stream, "ACK:" + line + "\n")
+            end)
+            end)
+
+            # High-level client connection
+            let client = ev::client(loop, "127.0.0.1", port)
+            ev::stream_on_line(client, function(stream, line)
+                say "   [Client] Received server response: '" + line + "'"
+                end)
+
+                # Write request line from client
+                ev::stream_write(client, "ALYA_REACTOR_PING\n")
+
+                # Pump reactor loop for 3 cycles to complete handshake and message exchange
+                let ticks = 0
+                while ticks < 5
+                    let events = loop.tick(10)
+                    for ev_item in events
+                        loop.dispatch(ev_item)
+                    end
+                    ticks += 1
+                end
+
+                # Clean shutdown
+                ev::stream_close(client)
+                ev::tcp_server_close(srv)
+                say "   Server and client cleanly closed."
+            end
+
+            function main()
+                say "=== Alya Event Engine (Lib/event) Showcase ===\n"
+                demo_timers()
+                demo_sockets()
+                demo_buffer()
+                demo_emitter()
+                demo_stream_reader()
+                demo_tcp_server()
+                say "\n🎉 Lib/event demonstration completed successfully!"
+            end
+
+            main()

@@ -1,0 +1,102 @@
+# Test suite for RingBuffer and StreamReader framing abstractions
+import "std/test"
+import "../src/lib.alya" as ev
+
+function main()
+    test_suite("event Package RingBuffer & StreamReader Test Suite")
+    let r = runner_new()
+
+    # 1. RingBuffer Basic Operations
+    let ring = ev::ring(32)
+    runner_assert_eq(r, ring.available(), 0, "initial available bytes should be 0")
+    runner_assert_eq(r, ring.free_space(), 32, "initial free space should match capacity")
+    runner_assert_eq(r, ring.is_empty(), 1, "new ring buffer should be empty")
+    runner_assert_eq(r, ring.is_full(), 0, "new ring buffer should not be full")
+
+    # Write partial data
+    let written = ring.write("HelloWorld")
+    runner_assert_eq(r, written, 10, "wrote 10 bytes")
+    runner_assert_eq(r, ring.available(), 10, "available bytes should be 10")
+    runner_assert_eq(r, ring.free_space(), 22, "free space should be 22")
+    runner_assert_eq(r, ring.is_empty(), 0, "ring buffer should not be empty")
+
+    # Peek without consuming
+    let peeked = ring.peek(5)
+    runner_assert_str_eq(r, peeked, "Hello", "peek should return first 5 bytes")
+    runner_assert_eq(r, ring.available(), 10, "peek should not consume bytes")
+
+    # Read partial data
+    let part1 = ring.read(5)
+    runner_assert_str_eq(r, part1, "Hello", "read should consume first 5 bytes")
+    runner_assert_eq(r, ring.available(), 5, "available should decrease to 5")
+
+    # Read remaining
+    let part2 = ring.read(10) # request more than available
+    runner_assert_str_eq(r, part2, "World", "read should return remaining bytes")
+    runner_assert_eq(r, ring.available(), 0, "available should be 0 after consuming all")
+    runner_assert_eq(r, ring.is_empty(), 1, "ring buffer should be empty")
+
+    # Write up to and exceeding capacity
+    ring.write("12345678901234567890123456789012") # 32 bytes
+    runner_assert_eq(r, ring.available(), 32, "ring buffer should be at capacity 32")
+    runner_assert_eq(r, ring.is_full(), 1, "ring buffer should report full")
+    let overflow = ring.write("extra")
+    runner_assert_eq(r, overflow, -1, "overflow write should return -1 when full")
+
+    # Clear buffer
+    ring.clear()
+    runner_assert_eq(r, ring.available(), 0, "cleared buffer should have 0 bytes")
+    runner_assert_eq(r, ring.is_empty(), 1, "cleared buffer should be empty")
+
+    # 2. StreamReader Line Framing
+    let reader = ev::reader("\n")
+    runner_assert_eq(r, reader.available(), 0, "reader should start empty")
+    runner_assert_eq(r, reader.is_empty(), 1, "reader should report is_empty")
+
+    # Partial chunk assembly across multiple feeds
+    reader.feed("GET /index.html ")
+    let line0 = reader.read_line()
+    runner_assert_eq(r, line0[1], 0, "incomplete line should return has_line = 0")
+
+    reader.feed("HTTP/1.1\r\nHost: localhost\nUser-Agent: Alya\r\n")
+    let line1 = reader.read_line()
+    runner_assert_eq(r, line1[1], 1, "line 1 should be ready")
+    runner_assert_str_eq(r, line1[0], "GET /index.html HTTP/1.1", "line 1 CRLF correctly stripped")
+
+    let line2 = reader.read_line()
+    runner_assert_eq(r, line2[1], 1, "line 2 should be ready")
+    runner_assert_str_eq(r, line2[0], "Host: localhost", "line 2 LF correctly extracted")
+
+    let line3 = reader.read_line()
+    runner_assert_eq(r, line3[1], 1, "line 3 should be ready")
+    runner_assert_str_eq(r, line3[0], "User-Agent: Alya", "line 3 CRLF correctly stripped")
+
+    let line4 = reader.read_line()
+    runner_assert_eq(r, line4[1], 0, "no more lines available")
+
+    # 3. StreamReader read_until (Delimiter Framing)
+    reader.clear()
+    reader.feed("HEADER_DATA<--END-->PAYLOAD_BODY")
+    let delim_res = reader.read_until("<--END-->")
+    runner_assert_eq(r, delim_res[1], 1, "delimiter found")
+    runner_assert_str_eq(r, delim_res[0], "HEADER_DATA", "payload up to delimiter extracted")
+    runner_assert_str_eq(r, reader.peek(7), "PAYLOAD", "remainder preserved after delimiter")
+
+    # 4. StreamReader read_bytes (Fixed-length Framing)
+    reader.clear()
+    reader.feed("1234567890ABCDEF")
+    let b_res1 = reader.read_bytes(4)
+    runner_assert_eq(r, b_res1[1], 1, "read_bytes(4) successful")
+    runner_assert_str_eq(r, b_res1[0], "1234", "first 4 bytes correct")
+
+    let b_res2 = reader.read_bytes(6)
+    runner_assert_eq(r, b_res2[1], 1, "read_bytes(6) successful")
+    runner_assert_str_eq(r, b_res2[0], "567890", "next 6 bytes correct")
+
+    let b_res3 = reader.read_bytes(10) # only 6 bytes remain ("ABCDEF")
+    runner_assert_eq(r, b_res3[1], 0, "requesting more bytes than available returns 0")
+
+    runner_summary(r)
+end
+
+main()

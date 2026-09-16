@@ -1,0 +1,104 @@
+# Circular Ring Buffer for Stream Data Assembly
+# Part of the Alya Language package ecosystem (https://github.com/alya-lang)
+
+import "../types.alya"
+
+# Constructs a new RingBuffer instance with the given byte capacity
+pub function ring_buffer_new(capacity = 65536)
+    if capacity is null or capacity <= 0
+        capacity = 65536
+    end
+    return RingBuffer {
+        raw: "",
+        size: 0,
+        capacity: capacity
+    }
+end
+
+# Writes incoming data chunk into the ring buffer
+# Returns number of bytes successfully accepted, or -1 if buffer is full
+pub function RingBuffer.write(self, chunk)
+    if self is null or chunk is null or len(chunk) == 0
+        return 0
+    end
+    let chunk_len = len(chunk)
+    if self.size + chunk_len > self.capacity
+        let available_space = self.capacity - self.size
+        if available_space <= 0
+            return -1
+        end
+        chunk = chunk[0..available_space]
+        chunk_len = available_space
+    end
+    self.raw += chunk
+    self.size += chunk_len
+    return chunk_len
+end
+
+# Consumes and returns up to n bytes from the buffer
+pub function RingBuffer.read(self, n)
+    if self is null or self.size == 0 or n is null or n <= 0
+        return ""
+    end
+    if n >= self.size
+        let res = self.raw
+        self.raw = ""
+        self.size = 0
+        return res
+    end
+    let res = self.raw[0..n]
+    self.raw = self.raw[n..self.size]
+    self.size -= n
+    return res
+end
+
+# Peeks up to n bytes without consuming them from the buffer
+pub function RingBuffer.peek(self, n)
+    if self is null or self.size == 0 or n is null or n <= 0
+        return ""
+    end
+    if n >= self.size
+        return self.raw
+    end
+    return self.raw[0..n]
+end
+
+# Resets and discards all data in the ring buffer
+pub function RingBuffer.clear(self)
+    if self is not null
+        self.raw = ""
+        self.size = 0
+    end
+end
+
+# Returns count of bytes currently buffered
+pub function RingBuffer.available(self)
+    if self is null
+        return 0
+    end
+    return self.size
+end
+
+# Returns available free capacity remaining in the buffer
+pub function RingBuffer.free_space(self)
+    if self is null
+        return 0
+    end
+    return self.capacity - self.size
+end
+
+# Returns 1 if buffer is completely empty, 0 otherwise
+pub function RingBuffer.is_empty(self)
+    if self is null
+        return 1
+    end
+    return self.size == 0
+end
+
+# Returns 1 if buffer is completely full, 0 otherwise
+pub function RingBuffer.is_full(self)
+    if self is null
+        return 0
+    end
+    return self.size >= self.capacity
+end

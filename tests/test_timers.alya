@@ -8,7 +8,7 @@ function main()
 
     # 1. Immediate / Short timeout firing
     let loop = ev::loop()
-    let t1 = ev::set_timeout(loop, 20, "fast_timer", 42)
+    let t1 = ev::set_timeout(loop, 20, "fast_timer", "payload_42")
     runner_assert_eq(r, ev::loop_active_count(loop), 1, "1 active timer initially")
 
     # The reactor loop automatically calculates the nearest wait time and collects expired timers
@@ -19,13 +19,13 @@ function main()
         runner_assert_eq(r, ev1.event_type, ev::EVENT_TIMER(), "event type should be EVENT_TIMER")
         runner_assert_eq(r, ev1.timer_id, t1, "timer id should match t1")
         runner_assert_str_eq(r, ev1.tag, "fast_timer", "tag should be fast_timer")
-        runner_assert_eq(r, ev1.data, 42, "data should match 42")
+        runner_assert_str_eq(r, ev1.data, "payload_42", "data should match payload_42")
     end
     runner_assert_eq(r, ev::loop_active_count(loop), 0, "active count should be 0 after timeout expires")
 
     # 2. Cancelled timer should never fire
     ev::loop_reset(loop)
-    let t_cancel = ev::set_timeout(loop, 20, "to_cancel", null)
+    let t_cancel = ev::set_timeout(loop, 20, "to_cancel", "")
     ev::clear_timer(loop, t_cancel)
     let events2 = ev::loop_tick(loop, 40)
     runner_assert_eq(r, len(events2), 0, "cancelled timer should not produce events")

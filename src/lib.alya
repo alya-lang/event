@@ -84,4 +84,3 @@ end
 function EVENT_CLOSE()
     return event_type_close()
 end
-

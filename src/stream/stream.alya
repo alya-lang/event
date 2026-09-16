@@ -9,7 +9,7 @@ import "../core/watcher.alya"
 
 # Constructs and initializes a new TcpStream over socket descriptor fd
 pub function tcp_stream_new(loop, fd, high_water_mark = 65536)
-    if loop is null or fd is null or fd < 0
+    if loop is null or fd is null or fd < 0 or fd >= 2147483647
         return null
     end
     if high_water_mark is null or high_water_mark <= 0

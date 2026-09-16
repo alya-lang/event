@@ -16,7 +16,7 @@ pub function tcp_client_connect(loop, host, port, on_connect = null, on_error = 
     end
 
     let client_fd = tcp_connect(host, port)
-    if client_fd < 0
+    if client_fd < 0 or client_fd >= 2147483647
         if on_error is not null
             on_error(null, "Failed to connect to " + host + ":" + str(port))
         end

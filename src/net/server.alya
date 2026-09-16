@@ -47,16 +47,19 @@ end
 
 # Accepts incoming client connections non-blockingly and wraps each in a TcpStream
 pub function tcp_server_accept(server)
-    if server is null or server.listening == 0 or server.fd < 0
+    if server is null or server.listening == 0 or server.fd < 0 or server.fd >= 2147483647
         return 0
     end
     let count = 0
-    while 1
+    while tcp_poll(server.fd, 0) == 1
         let client_fd = tcp_accept(server.fd)
-        if client_fd < 0
+        if client_fd < 0 or client_fd >= 2147483647
             break
         end
         let stream = tcp_stream_new(server.loop, client_fd)
+        if stream is null
+            break
+        end
         push(server.clients, stream)
         count += 1
 

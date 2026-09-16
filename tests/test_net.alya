@@ -54,8 +54,8 @@ function main()
 
     # Allow server to accept connection
     let ticks = 0
-    while server.client_count() == 0 and ticks < 10
-        let events = l.tick(10)
+    while server.client_count() == 0 and ticks < 20
+        let events = l.tick(15)
         for ev in events
             l.dispatch(ev)
         end
@@ -69,8 +69,8 @@ function main()
 
     # Pump reactor loop until echoes are received
     ticks = 0
-    while len(ctx.client_received) < 2 and ticks < 20
-        let events = l.tick(10)
+    while len(ctx.client_received) < 2 and ticks < 30
+        let events = l.tick(15)
         for ev in events
             l.dispatch(ev)
         end

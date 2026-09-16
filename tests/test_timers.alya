@@ -2,25 +2,6 @@
 import "std/test"
 import "../src/lib.alya" as ev
 
-# Helper to poll loop until events arrive or maximum attempts reached
-function poll_until_events(loop, max_attempts = 40, wait_per_tick_ms = 10)
-    let collected = []
-    let attempts = 0
-    while len(collected) == 0 and attempts < max_attempts
-        let batch = ev::loop_tick(loop, wait_per_tick_ms)
-        let i = 0
-        while i < len(batch)
-            push(collected, batch[i])
-            i += 1
-        end
-        if len(collected) == 0
-            sleep(5)
-        end
-        attempts += 1
-    end
-    return collected
-end
-
 function main()
     test_suite("event Package Timers Test Suite")
     let r = runner_new()
@@ -30,8 +11,14 @@ function main()
     let t1 = ev::set_timeout(loop, 10, "fast_timer", 42)
     runner_assert_eq(r, ev::loop_active_count(loop), 1, "1 active timer initially")
 
-    # Poll until timeout expires
-    let events = poll_until_events(loop, 40, 10)
+    # Drive the reactor loop until the timer triggers
+    let events = []
+    let attempt = 0
+    while len(events) == 0 and attempt < 50
+        events = ev::loop_tick(loop, 20)
+        attempt += 1
+    end
+
     runner_assert_eq(r, len(events), 1, "should have 1 expired timer event")
     if len(events) > 0
         let ev1 = events[0]
@@ -55,16 +42,26 @@ function main()
     let t_interval = ev::set_interval(loop, 15, "heartbeat", "hb_data")
     runner_assert_eq(r, ev::loop_active_count(loop), 1, "interval should be active")
 
-    # Tick 1: Wait for first interval
-    let events3 = poll_until_events(loop, 40, 10)
+    # Tick 1: Drive loop until first interval triggers
+    let events3 = []
+    let attempt3 = 0
+    while len(events3) == 0 and attempt3 < 50
+        events3 = ev::loop_tick(loop, 20)
+        attempt3 += 1
+    end
     runner_assert_eq(r, len(events3), 1, "tick 1 should have 1 interval event")
     if len(events3) > 0
         runner_assert_str_eq(r, events3[0].tag, "heartbeat", "tick 1 tag should be heartbeat")
     end
     runner_assert_eq(r, ev::loop_active_count(loop), 1, "interval should still remain active after firing")
 
-    # Tick 2: Wait for second interval
-    let events4 = poll_until_events(loop, 40, 10)
+    # Tick 2: Drive loop until second interval triggers
+    let events4 = []
+    let attempt4 = 0
+    while len(events4) == 0 and attempt4 < 50
+        events4 = ev::loop_tick(loop, 20)
+        attempt4 += 1
+    end
     runner_assert_eq(r, len(events4), 1, "tick 2 should have 1 interval event")
     if len(events4) > 0
         runner_assert_str_eq(r, events4[0].tag, "heartbeat", "tick 2 tag should be heartbeat")

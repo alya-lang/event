@@ -23,8 +23,9 @@ function main()
     let l2 = ev::loop()
     let t_int = l2.interval(5, "heartbeat", null)
 
-    # Run for 40ms manually via tick
-    let ticks = l2.tick(40)
+    # Allow interval to elapse
+    sleep(15)
+    let ticks = l2.tick(0)
     runner_assert(r, len(ticks) >= 1, "should have fired at least 1 interval")
 
     # Stop loop

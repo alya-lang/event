@@ -8,17 +8,11 @@ function main()
 
     # 1. Immediate / Short timeout firing
     let loop = ev::loop()
-    let t1 = ev::set_timeout(loop, 10, "fast_timer", 42)
+    let t1 = ev::set_timeout(loop, 20, "fast_timer", 42)
     runner_assert_eq(r, ev::loop_active_count(loop), 1, "1 active timer initially")
 
-    # Drive the reactor loop until the timer triggers
-    let events = []
-    let attempt = 0
-    while len(events) == 0 and attempt < 50
-        events = ev::loop_tick(loop, 20)
-        attempt += 1
-    end
-
+    # The reactor loop automatically calculates the nearest wait time and collects expired timers
+    let events = ev::loop_tick(loop, 60)
     runner_assert_eq(r, len(events), 1, "should have 1 expired timer event")
     if len(events) > 0
         let ev1 = events[0]
@@ -31,37 +25,26 @@ function main()
 
     # 2. Cancelled timer should never fire
     ev::loop_reset(loop)
-    let t_cancel = ev::set_timeout(loop, 10, "to_cancel", null)
+    let t_cancel = ev::set_timeout(loop, 20, "to_cancel", null)
     ev::clear_timer(loop, t_cancel)
-    sleep(20)
-    let events2 = ev::loop_tick(loop, 0)
+    let events2 = ev::loop_tick(loop, 40)
     runner_assert_eq(r, len(events2), 0, "cancelled timer should not produce events")
 
     # 3. Repeating Interval Timer
     ev::loop_reset(loop)
-    let t_interval = ev::set_interval(loop, 15, "heartbeat", "hb_data")
+    let t_interval = ev::set_interval(loop, 20, "heartbeat", "hb_data")
     runner_assert_eq(r, ev::loop_active_count(loop), 1, "interval should be active")
 
-    # Tick 1: Drive loop until first interval triggers
-    let events3 = []
-    let attempt3 = 0
-    while len(events3) == 0 and attempt3 < 50
-        events3 = ev::loop_tick(loop, 20)
-        attempt3 += 1
-    end
+    # Tick 1: Wait for first interval
+    let events3 = ev::loop_tick(loop, 40)
     runner_assert_eq(r, len(events3), 1, "tick 1 should have 1 interval event")
     if len(events3) > 0
         runner_assert_str_eq(r, events3[0].tag, "heartbeat", "tick 1 tag should be heartbeat")
     end
     runner_assert_eq(r, ev::loop_active_count(loop), 1, "interval should still remain active after firing")
 
-    # Tick 2: Drive loop until second interval triggers
-    let events4 = []
-    let attempt4 = 0
-    while len(events4) == 0 and attempt4 < 50
-        events4 = ev::loop_tick(loop, 20)
-        attempt4 += 1
-    end
+    # Tick 2: Wait for second interval
+    let events4 = ev::loop_tick(loop, 40)
     runner_assert_eq(r, len(events4), 1, "tick 2 should have 1 interval event")
     if len(events4) > 0
         runner_assert_str_eq(r, events4[0].tag, "heartbeat", "tick 2 tag should be heartbeat")

@@ -150,10 +150,12 @@ let triggered = ev::emitter_emit(em, "order_created", {"order_id": 1001})
 | `loop()` | None | `EventLoop` | Creates a new initialized `EventLoop` instance. |
 | `loop_tick(loop, max_wait_ms)` | `loop`, `max_wait_ms = 100` | `array` | Executes a single reactor cycle (dynamic sleep, poll I/O, collect timers) and returns triggered `EventNotification` records. |
 | `loop_poll(loop, max_wait_ms)` | `loop`, `max_wait_ms = 100` | `array` | Alias for `loop_tick`. Polls the event loop for up to `max_wait_ms`. |
+| `loop_run(loop, max_wait_ms, on_event)` | `loop`, `max_wait_ms = 100`, `on_event = null` | `integer` | Runs the event loop continuously until all timers and watchers complete or stop is requested. Invokes `on_event(ev)` for each event. Returns total events processed. |
 | `loop_is_running(loop)` | `loop` | `integer` | Returns `1` if the loop has active timers or watchers and is not stopped, `0` otherwise. |
 | `loop_active_count(loop)` | `loop` | `integer` | Returns total active handles (active timers + active socket watchers). |
 | `loop_stop(loop)` | `loop` | `void` | Requests the event loop to stop processing further ticks. |
 | `loop_reset(loop)` | `loop` | `void` | Clears all registered timers and socket watchers, resetting the loop. |
+| `loop_free(loop)` | `loop` | `void` | Frees and resets all resources in the event loop. |
 
 ### Timers & Intervals
 
@@ -168,7 +170,9 @@ let triggered = ev::emitter_emit(em, "order_created", {"order_id": 1001})
 | Function | Arguments | Returns | Description |
 |---|---|---|---|
 | `watch_read(loop, fd, tag, data)` | `loop`, `fd`, `tag = ""`, `data = null` | `integer` | Registers a non-blocking socket to watch for readable incoming data (`EventType.Read`). |
+| `watch_readable(loop, fd, tag, data)` | `loop`, `fd`, `tag = ""`, `data = null` | `integer` | Alias for `watch_read`. Registers socket to watch for incoming data. |
 | `watch_write(loop, fd, tag, data)` | `loop`, `fd`, `tag = ""`, `data = null` | `integer` | Registers a non-blocking socket to watch for writable readiness (`EventType.Write`). |
+| `watch_writable(loop, fd, tag = "", data = null)` | `loop`, `fd`, `tag = ""`, `data = null` | `integer` | Alias for `watch_write`. Registers socket to watch for writable readiness. |
 | `unwatch(loop, fd)` | `loop`, `fd` | `integer` | Deregisters all watchers associated with socket `fd`. Returns `1` if removed, `0` if not found. |
 
 ### Stream ByteBuffer

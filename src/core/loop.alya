@@ -97,10 +97,49 @@ pub function loop_tick(loop, max_wait_ms = 100)
 
     return all_events
 end
-
 # Polls the event loop for up to max_wait_ms milliseconds and returns all triggered events
 pub function loop_poll(loop, max_wait_ms = 100)
     return loop_tick(loop, max_wait_ms)
+end
+
+# Continuously runs the event loop until stop is requested or no active handles remain.
+# If on_event callback is provided, it is invoked for each triggered event.
+# Returns total number of events processed across all iterations.
+pub function loop_run(loop, max_wait_ms = 100, on_event = null)
+    if loop is null
+        return 0
+    end
+    let total_events = 0
+    while loop_is_running(loop) == 1
+        let events = loop_tick(loop, max_wait_ms)
+        if len(events) > 0
+            total_events += len(events)
+            if on_event is not null
+                for ev in events
+                    on_event(ev)
+                end
+            end
+        end
+    end
+    return total_events
+end
+
+# Frees and resets all resources in the event loop
+pub function loop_free(loop)
+    if loop is not null
+        loop_stop(loop)
+        loop_reset(loop)
+    end
+end
+
+# UFCS global dispatch for loop.run(...)
+pub function run(loop, max_wait_ms = 100, on_event = null)
+    return loop_run(loop, max_wait_ms, on_event)
+end
+
+# UFCS global dispatch for loop.free(...)
+pub function free(loop)
+    loop_free(loop)
 end
 
 # --- Struct Methods on EventLoop ---
@@ -121,6 +160,10 @@ pub function EventLoop.reset(self)
     loop_reset(self)
 end
 
+pub function EventLoop.free(self)
+    loop_free(self)
+end
+
 pub function EventLoop.tick(self, max_wait_ms = 100)
     return loop_tick(self, max_wait_ms)
 end
@@ -129,11 +172,23 @@ pub function EventLoop.poll(self, max_wait_ms = 100)
     return loop_poll(self, max_wait_ms)
 end
 
+pub function EventLoop.run(self, max_wait_ms = 100, on_event = null)
+    return loop_run(self, max_wait_ms, on_event)
+end
+
 pub function EventLoop.timeout(self, delay_ms, tag = "", data = null)
     return timer_add_timeout(self, delay_ms, tag, data)
 end
 
+pub function EventLoop.set_timeout(self, delay_ms, tag = "", data = null)
+    return timer_add_timeout(self, delay_ms, tag, data)
+end
+
 pub function EventLoop.interval(self, interval_ms, tag = "", data = null)
+    return timer_add_interval(self, interval_ms, tag, data)
+end
+
+pub function EventLoop.set_interval(self, interval_ms, tag = "", data = null)
     return timer_add_interval(self, interval_ms, tag, data)
 end
 
@@ -145,7 +200,15 @@ pub function EventLoop.watch_read(self, fd, tag = "", data = null)
     return watcher_add(self, fd, 1, tag, data)
 end
 
+pub function EventLoop.watch_readable(self, fd, tag = "", data = null)
+    return watcher_add(self, fd, 1, tag, data)
+end
+
 pub function EventLoop.watch_write(self, fd, tag = "", data = null)
+    return watcher_add(self, fd, 2, tag, data)
+end
+
+pub function EventLoop.watch_writable(self, fd, tag = "", data = null)
     return watcher_add(self, fd, 2, tag, data)
 end
 

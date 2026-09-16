@@ -59,3 +59,13 @@ end
 pub function unwatch(loop, fd)
     return watcher_remove(loop, fd)
 end
+
+# Convenience alias matching Phase 1 spec for readable watch
+pub function watch_readable(loop, fd, tag = "", data = null)
+    return watcher_add(loop, fd, 1, tag, data)
+end
+
+# Convenience alias matching Phase 1 spec for writable watch
+pub function watch_writable(loop, fd, tag = "", data = null)
+    return watcher_add(loop, fd, 2, tag, data)
+end

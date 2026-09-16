@@ -1,0 +1,57 @@
+# Unit tests for loop.run(), loop.free(), and continuous event processing
+import "std/test"
+import "../src/lib.alya" as ev
+
+function main()
+    test_suite("event Package loop.run() Test Suite")
+    let r = runner_new()
+
+    # 1. loop.run() with timeouts completing naturally
+    let l = ev::loop()
+    let t1 = l.timeout(10, "timeout_1", 100)
+    let t2 = l.timeout(25, "timeout_2", 200)
+    runner_assert_eq(r, l.active_count(), 2, "initial active count should be 2")
+    runner_assert_eq(r, l.is_running(), 1, "loop should report active handles")
+
+    let count = l.run(10)
+    runner_assert(r, count >= 2, "loop.run should process all expired timers")
+    runner_assert_eq(r, l.active_count(), 0, "loop active count should be 0 when done")
+    runner_assert_eq(r, l.is_running(), 0, "loop should not be running when empty")
+
+    # 2. loop.stop() called during an interval
+    let l2 = ev::loop()
+    let t_int = l2.interval(10, "heartbeat", null)
+
+    # Run for 25ms manually via tick
+    let ticks = l2.tick(25)
+    runner_assert(r, len(ticks) >= 1, "should have fired at least 1 interval")
+
+    # Stop loop
+    l2.stop()
+    runner_assert_eq(r, l2.is_running(), 0, "loop with stop requested should not be running")
+
+    # 3. loop.free() cleans up all state
+    let l3 = ev::loop()
+    l3.timeout(50, "t_pending", null)
+    l3.watch_read(10, "w_pending", null)
+    runner_assert_eq(r, l3.active_count(), 2, "l3 should have 2 active handles")
+
+    l3.free()
+    runner_assert_eq(r, l3.active_count(), 0, "l3.free() should clear all active handles")
+    runner_assert_eq(r, l3.is_running(), 0, "l3 should not be running after free")
+
+    # 4. Watcher aliases: watch_readable and watch_writable
+    let l4 = ev::loop()
+    let w_r = l4.watch_readable(15, "read_sock", null)
+    let w_w = l4.watch_writable(16, "write_sock", null)
+    runner_assert(r, w_r >= 1, "watch_readable registered successfully")
+    runner_assert(r, w_w > w_r, "watch_writable registered successfully")
+    runner_assert_eq(r, l4.active_count(), 2, "l4 active count should be 2")
+    l4.unwatch(15)
+    l4.unwatch(16)
+    runner_assert_eq(r, l4.active_count(), 0, "unwatch cleared handles")
+
+    runner_summary(r)
+end
+
+main()

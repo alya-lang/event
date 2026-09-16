@@ -1,0 +1,14 @@
+# event library
+# Part of the Alya Language package ecosystem (https://github.com/alya-lang)
+
+import "./types.alya"
+import "./core/formatter.alya"
+
+# Public facade functions
+function hello(name = "World")
+    return core_format_greeting(name)
+end
+
+function new_config(name = "World", count = 1)
+    return make_config(name, count)
+end

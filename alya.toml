@@ -1,0 +1,18 @@
+[package]
+name = "event"
+version = "0.1.0"
+alya-version = "0.0.17"
+entry = "src/lib.alya"
+description = "High-concurrency reactor event loop, timers, and I/O multiplexer for Alya"
+authors = ["Alya Language Contributors <https://github.com/alya-lang>"]
+license = "MIT"
+homepage = "https://github.com/alya-lang/alya"
+repository = "https://github.com/alya-lang/event"
+keywords = ["alya", "alya-lang", "package", "event", "event-loop", "reactor", "concurrency", "networking", "timers"]
+
+[dependencies]
+
+# [build]
+# c-sources = ["c/source.c"]
+# c-flags = ["-O2"]
+# c-include-dirs = ["c"]

@@ -1,0 +1,147 @@
+# Timer Management and Scheduling for EventLoop
+# Part of the Alya Language package ecosystem (https://github.com/alya-lang)
+
+import "../types.alya"
+
+# Registers a one-shot timeout in the loop
+# Returns the assigned timer ID (integer >= 1)
+function timer_add_timeout(loop, delay_ms, tag = "", data = null)
+    if loop == null
+        return -1
+    end
+    if delay_ms == null or delay_ms < 0
+        delay_ms = 0
+    end
+    let tid = loop.next_timer_id
+    loop.next_timer_id += 1
+    let now = clock_ms()
+    let deadline = now + delay_ms
+    let t = timer_new(tid, deadline, 0, tag, data)
+    push(loop.timers, t)
+    return tid
+end
+
+# Registers a recurring interval timer in the loop
+# Returns the assigned timer ID (integer >= 1)
+function timer_add_interval(loop, interval_ms, tag = "", data = null)
+    if loop == null
+        return -1
+    end
+    if interval_ms == null or interval_ms < 1
+        interval_ms = 1
+    end
+    let tid = loop.next_timer_id
+    loop.next_timer_id += 1
+    let now = clock_ms()
+    let deadline = now + interval_ms
+    let t = timer_new(tid, deadline, interval_ms, tag, data)
+    push(loop.timers, t)
+    return tid
+end
+
+# Cancels an existing active timer by its ID
+# Returns 1 if found and cancelled, 0 otherwise
+function timer_cancel(loop, timer_id)
+    if loop == null or timer_id == null or timer_id < 0
+        return 0
+    end
+    let count = len(loop.timers)
+    let i = 0
+    while i < count
+        let t = loop.timers[i]
+        if t.id == timer_id and t.active == 1
+            t.active = 0
+            return 1
+        end
+        i += 1
+    end
+    return 0
+end
+
+# Returns the number of currently active timers in the loop
+function timer_count_active(loop)
+    if loop == null
+        return 0
+    end
+    let active_count = 0
+    let count = len(loop.timers)
+    let i = 0
+    while i < count
+        let t = loop.timers[i]
+        if t.active == 1
+            active_count += 1
+        end
+        i += 1
+    end
+    return active_count
+end
+
+# Calculates the wait duration in milliseconds until the closest timer expires
+# If no active timers exist, returns max_wait_ms
+function timer_nearest_wait_ms(loop, max_wait_ms = 1000)
+    if loop == null
+        return max_wait_ms
+    end
+    let now = clock_ms()
+    let min_wait = max_wait_ms
+    let has_active = 0
+
+    let count = len(loop.timers)
+    let i = 0
+    while i < count
+        let t = loop.timers[i]
+        if t.active == 1
+            has_active = 1
+            let diff = t.deadline_ms - now
+            if diff < 0
+                diff = 0
+            end
+            if diff < min_wait
+                min_wait = diff
+            end
+        end
+        i += 1
+    end
+
+    if has_active == 0
+        return max_wait_ms
+    end
+    return min_wait
+end
+
+# Collects all expired timers, reschedules intervals, and returns EventNotification records
+function timer_collect_expired(loop)
+    if loop == null
+        return []
+    end
+    let now = clock_ms()
+    let expired = []
+    let active_remaining = []
+
+    let count = len(loop.timers)
+    let i = 0
+    while i < count
+        let t = loop.timers[i]
+        if t.active == 1
+            if t.deadline_ms <= now
+                # Timer has expired!
+                let ev = event_notification_new(3, -1, t.id, t.tag, t.data)
+                push(expired, ev)
+
+                # If interval timer, reschedule for the next cycle
+                if t.interval_ms > 0
+                    t.deadline_ms = now + t.interval_ms
+                    push(active_remaining, t)
+                else
+                    t.active = 0
+                end
+            else
+                push(active_remaining, t)
+            end
+        end
+        i += 1
+    end
+
+    loop.timers = active_remaining
+    return expired
+end

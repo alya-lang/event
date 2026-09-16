@@ -1,15 +1,110 @@
-# Example usage of event
-import "../src/lib.alya" as pkg
+# Full Feature Demonstration of Lib/event
+# Part of the Alya Language package ecosystem (https://github.com/alya-lang)
+
+import "std/net"
+import "../src/lib.alya" as ev
+
+# --- 1. EventLoop & Timers Demonstration ---
+function demo_timers()
+    say "1. Initializing EventLoop and Scheduling Timers..."
+    let loop = ev::loop()
+
+    let t1 = ev::set_timeout(loop, 40, "one_shot_timer", null)
+    let t2 = ev::set_interval(loop, 20, "interval_heartbeat", 1)
+    say "   Scheduled timeout id: " + str(t1)
+    say "   Scheduled interval id: " + str(t2)
+    say "   Active loop handles: " + str(ev::loop_active_count(loop))
+
+    # Run loop for 50ms to collect timer events
+    say "   Polling loop..."
+    sleep(50)
+    let timer_events = ev::loop_poll(loop, 0)
+    say "   Triggered timer events: " + str(len(timer_events))
+    let i = 0
+    while i < len(timer_events)
+        let ev_rec = timer_events[i]
+        say "   -> Event [" + ev::event_type_name(ev_rec.event_type) + "] tag=" + ev_rec.tag
+        i += 1
+    end
+    ev::clear_timer(loop, t2)
+    ev::loop_reset(loop)
+end
+
+# --- 2. Non-Blocking TCP Event Demultiplexer Demonstration ---
+function demo_sockets()
+    say "\n2. Non-Blocking TCP Socket Demultiplexing..."
+    let loop = ev::loop()
+    let echo_port = 19999
+    let server = tcp_listen(echo_port, 5)
+    tcp_set_nonblocking(server, 1)
+    ev::watch_read(loop, server, "server_listener", null)
+    say "   Server listening on port " + str(echo_port) + " (non-blocking)"
+
+    # Connect client
+    let client = tcp_connect("127.0.0.1", echo_port)
+    tcp_send(client, "HELLO_EVENT_LOOP\n")
+
+    # Poll loop for server connect event
+    let events = ev::loop_poll(loop, 50)
+    say "   Loop detected " + str(len(events)) + " incoming socket event(s)"
+
+    let accepted = tcp_accept(server)
+    tcp_set_nonblocking(accepted, 1)
+    ev::watch_read(loop, accepted, "client_socket", null)
+
+    # Poll loop for data event
+    let data_events = ev::loop_poll(loop, 50)
+    if len(data_events) > 0
+        let incoming = tcp_recv(accepted, 1024)
+        say "   Server received via non-blocking poll: " + incoming
+        tcp_send(accepted, "ECHO: " + incoming)
+    end
+
+    # Clean up sockets
+    ev::unwatch(loop, server)
+    ev::unwatch(loop, accepted)
+    tcp_close(client)
+    tcp_close(accepted)
+    tcp_close(server)
+end
+
+# --- 3. Stream ByteBuffer Assembly Demonstration ---
+function demo_buffer()
+    say "\n3. Stream ByteBuffer Assembly..."
+    let buf = ev::buffer()
+    ev::buffer_append(buf, "GET /api/v1/users HTTP/1.1\r\nHost: localhost\r\n\r\n")
+    let line1 = ev::buffer_read_line(buf)
+    say "   Extracted HTTP Request Line: " + line1[0]
+    let line2 = ev::buffer_read_line(buf)
+    say "   Extracted Header: " + line2[0]
+end
+
+# --- 4. EventEmitter (Pub/Sub) Demonstration ---
+function demo_emitter()
+    say "\n4. EventEmitter (Publish/Subscribe)..."
+    let em = ev::emitter()
+    let l1 = ev::emitter_on(em, "payment_received", "send_receipt_email")
+    let l2 = ev::emitter_on(em, "payment_received", "notify_warehouse")
+    let l3 = ev::emitter_once(em, "payment_received", "first_time_buyer_discount")
+
+    say "   Active listeners count: " + str(ev::emitter_listener_count(em, "payment_received"))
+    say "   Emitting 'payment_received' event..."
+    let dispatched = ev::emitter_emit(em, "payment_received", null)
+    say "   Triggered listeners: " + str(len(dispatched))
+    let k = 0
+    while k < len(dispatched)
+        say "   -> Dispatched to listener: " + dispatched[k]
+        k += 1
+    end
+end
 
 function main()
-    # Basic greeting
-    let msg = pkg::hello("Alya Developer")
-    say msg
-
-    # Using configuration struct
-    let cfg = pkg::new_config("Modular Architecture", 5)
-    say "Target: " + cfg.name
-    say "Formatted: " + pkg::core_format_custom(cfg)
+    say "=== Alya Event Engine (Lib/event) Showcase ===\n"
+    demo_timers()
+    demo_sockets()
+    demo_buffer()
+    demo_emitter()
+    say "\n🎉 Lib/event demonstration completed successfully!"
 end
 
 main()

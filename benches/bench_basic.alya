@@ -1,26 +1,57 @@
-# Benchmark suite for event
+# High-Performance Micro-Benchmark Suite for Lib/event
+# Part of the Alya Language package ecosystem (https://github.com/alya-lang)
+
 import "std/bench"
-import "../src/lib.alya" as pkg
+import "../src/lib.alya" as ev
 
 function main()
-    let runner = bench_runner("event Micro-Benchmarks")
+    let runner = bench_runner("event Engine Micro-Benchmarks")
 
-    bench_start(runner, 100000)
+    # 1. EventLoop Tick Throughput (zero-wait ticks)
+    let loop1 = ev::loop()
+    bench_start(runner, 20000)
     let i = 0
-    while i < 100000
-        pkg::hello("Alya")
+    while i < 20000
+        ev::loop_tick(loop1, 0)
         i += 1
     end
-    bench_stop(runner, "hello() 100k calls")
+    bench_stop(runner, "loop_tick() empty tick throughput (20,000 ticks)")
 
-    bench_start(runner, 50000)
+    # 2. Timer Scheduling & Cancellation Throughput
+    let loop2 = ev::loop()
+    bench_start(runner, 10000)
     let j = 0
-    while j < 50000
-        let cfg = pkg::new_config("Bench", 1)
-        pkg::core_format_custom(cfg)
+    while j < 10000
+        let tid = ev::set_timeout(loop2, 1000, "bench_timer", null)
+        ev::clear_timer(loop2, tid)
         j += 1
     end
-    bench_stop(runner, "new_config() + format_custom() 50k calls")
+    bench_stop(runner, "set_timeout() + clear_timer() (10,000 pairs)")
+
+    # 3. Stream ByteBuffer Assembly & Extraction
+    let buf = ev::buffer()
+    bench_start(runner, 15000)
+    let k = 0
+    while k < 15000
+        ev::buffer_append(buf, "POST /api/v1/telemetry HTTP/1.1\r\nContent-Length: 42\r\n\r\n")
+        ev::buffer_read_line(buf)
+        ev::buffer_read_line(buf)
+        ev::buffer_clear(buf)
+        k += 1
+    end
+    bench_stop(runner, "ByteBuffer append + read_line x2 + clear (15,000 ops)")
+
+    # 4. EventEmitter Dispatch Throughput
+    let em = ev::emitter()
+    ev::emitter_on(em, "telemetry_ping", "logger_1")
+    ev::emitter_on(em, "telemetry_ping", "logger_2")
+    bench_start(runner, 20000)
+    let m = 0
+    while m < 20000
+        ev::emitter_emit(em, "telemetry_ping", null)
+        m += 1
+    end
+    bench_stop(runner, "EventEmitter 2-listener dispatch (20,000 emits)")
 
     bench_summary(runner)
 end

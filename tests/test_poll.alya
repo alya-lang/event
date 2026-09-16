@@ -1,0 +1,72 @@
+# Real Non-Blocking Socket I/O Polling tests for event package
+import "std/test"
+import "std/net"
+import "../src/lib.alya" as ev
+
+function main()
+    test_suite("event Package Socket Polling Test Suite")
+    let r = runner_new()
+
+    let loop = ev::loop()
+    runner_assert(r, loop != null, "loop created")
+
+    # 1. Start Non-Blocking TCP Server
+    let test_port = 19876
+    let srv = tcp_listen(test_port, 10)
+    runner_assert(r, srv >= 0, "server socket should be valid (>= 0)")
+    tcp_set_nonblocking(srv, 1)
+
+    # Register server in event loop to watch for incoming connections
+    let srv_wid = ev::watch_read(loop, srv, "server_accept", "srv_ctx")
+    runner_assert(r, srv_wid >= 1, "server watcher registered")
+
+    # 2. Before any client connects, loop poll should find no I/O events
+    let events_empty = ev::loop_poll(loop, 10)
+    runner_assert_eq(r, len(events_empty), 0, "no events should trigger before connection")
+
+    # 3. Client connects to server
+    let client = tcp_connect("127.0.0.1", test_port)
+    runner_assert(r, client >= 0, "client connected successfully")
+
+    # 4. Loop poll should now wake up with server readable event!
+    let events_conn = ev::loop_poll(loop, 50)
+    runner_assert(r, len(events_conn) >= 1, "server should receive readable connect event")
+    runner_assert_eq(r, events_conn[0].fd, srv, "event fd should match server socket")
+    runner_assert_eq(r, events_conn[0].event_type, ev::EVENT_READ(), "event type should be READ")
+    runner_assert_str_eq(r, events_conn[0].tag, "server_accept", "tag should match server_accept")
+
+    # 5. Accept incoming client connection
+    let accepted = tcp_accept(srv)
+    runner_assert(r, accepted >= 0, "accepted client socket should be valid")
+    tcp_set_nonblocking(accepted, 1)
+
+    # Register accepted client socket in loop
+    let acc_wid = ev::watch_read(loop, accepted, "client_data", "client_ctx")
+    runner_assert(r, acc_wid >= 1, "accepted client watcher registered")
+
+    # 6. Client sends data
+    tcp_send(client, "PING_FROM_CLIENT")
+
+    # 7. Loop poll should wake up on accepted client socket
+    let events_data = ev::loop_poll(loop, 50)
+    runner_assert(r, len(events_data) >= 1, "loop should detect incoming data")
+    runner_assert_eq(r, events_data[0].fd, accepted, "data event fd should match accepted client")
+    runner_assert_str_eq(r, events_data[0].tag, "client_data", "tag should be client_data")
+
+    # Read data from non-blocking socket
+    let received = tcp_recv(accepted, 1024)
+    runner_assert_str_eq(r, received, "PING_FROM_CLIENT", "received payload should match client transmission")
+
+    # Clean up sockets and unwatch
+    ev::unwatch(loop, srv)
+    ev::unwatch(loop, accepted)
+    tcp_close(client)
+    tcp_close(accepted)
+    tcp_close(srv)
+
+    runner_assert_eq(r, ev::loop_active_count(loop), 0, "active watchers should be 0 after cleanup")
+
+    runner_summary(r)
+end
+
+main()

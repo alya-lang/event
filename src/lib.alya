@@ -1,14 +1,87 @@
-# event library
+# event - High-Concurrency Reactor Event Loop, Timers, and I/O Multiplexer
 # Part of the Alya Language package ecosystem (https://github.com/alya-lang)
 
 import "./types.alya"
-import "./core/formatter.alya"
+import "./core/loop.alya"
+import "./core/timer.alya"
+import "./core/watcher.alya"
+import "./core/poller.alya"
+import "./emitter/emitter.alya"
+import "./stream/buffer.alya"
 
-# Public facade functions
-function hello(name = "World")
-    return core_format_greeting(name)
+# --- Convenience Aliases ---
+
+# Factory alias for EventLoop
+function loop()
+    return event_loop_new()
 end
 
-function new_config(name = "World", count = 1)
-    return make_config(name, count)
+function loop_new()
+    return event_loop_new()
 end
+
+# Factory alias for EventEmitter
+function emitter()
+    return event_emitter_new()
+end
+
+# Factory alias for ByteBuffer
+function buffer()
+    return byte_buffer_new()
+end
+
+# Convenience alias for adding a timeout
+function set_timeout(loop, delay_ms, tag = "", data = null)
+    return timer_add_timeout(loop, delay_ms, tag, data)
+end
+
+# Convenience alias for adding an interval
+function set_interval(loop, interval_ms, tag = "", data = null)
+    return timer_add_interval(loop, interval_ms, tag, data)
+end
+
+# Convenience alias for clearing a timer
+function clear_timer(loop, timer_id)
+    return timer_cancel(loop, timer_id)
+end
+
+# Convenience alias for watching a socket for readable incoming data
+function watch_read(loop, fd, tag = "", data = null)
+    return watcher_add(loop, fd, 1, tag, data)
+end
+
+# Convenience alias for watching a socket for writable readiness
+function watch_write(loop, fd, tag = "", data = null)
+    return watcher_add(loop, fd, 2, tag, data)
+end
+
+# Convenience alias for unwatching a socket
+function unwatch(loop, fd)
+    return watcher_remove(loop, fd)
+end
+
+# Event Type Constant Aliases
+function EVENT_NONE()
+    return event_type_none()
+end
+
+function EVENT_READ()
+    return event_type_read()
+end
+
+function EVENT_WRITE()
+    return event_type_write()
+end
+
+function EVENT_TIMER()
+    return event_type_timer()
+end
+
+function EVENT_ERROR()
+    return event_type_error()
+end
+
+function EVENT_CLOSE()
+    return event_type_close()
+end
+

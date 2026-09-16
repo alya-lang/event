@@ -1,0 +1,144 @@
+# Event Emitter (Publish-Subscribe Pattern)
+# Part of the Alya Language package ecosystem (https://github.com/alya-lang)
+
+import "../types.alya"
+
+# Creates a new EventEmitter instance
+function emitter_new()
+    return event_emitter_new()
+end
+
+# Registers a persistent listener tag for an event
+# Returns assigned listener ID
+function emitter_on(em, event_name, tag)
+    if em == null or event_name == null or len(event_name) == 0
+        return -1
+    end
+    let lid = em.next_id
+    em.next_id += 1
+    let listener = EventListener {
+        id: lid,
+        event_name: event_name,
+        is_once: 0,
+        tag: tag,
+        data: null,
+        active: 1
+    }
+
+    if em.listeners[event_name] == null
+        em.listeners[event_name] = []
+    end
+    push(em.listeners[event_name], listener)
+    return lid
+end
+
+# Registers a one-time listener tag that automatically deregisters after being emitted once
+function emitter_once(em, event_name, tag)
+    if em == null or event_name == null or len(event_name) == 0
+        return -1
+    end
+    let lid = em.next_id
+    em.next_id += 1
+    let listener = EventListener {
+        id: lid,
+        event_name: event_name,
+        is_once: 1,
+        tag: tag,
+        data: null,
+        active: 1
+    }
+
+    if em.listeners[event_name] == null
+        em.listeners[event_name] = []
+    end
+    push(em.listeners[event_name], listener)
+    return lid
+end
+
+# Removes a listener from an event by tag or ID
+# Returns 1 if removed, 0 if not found
+function emitter_off(em, event_name, tag)
+    if em == null or event_name == null or em.listeners[event_name] == null
+        return 0
+    end
+    let list = em.listeners[event_name]
+    let removed = 0
+    let remaining = []
+    let count = len(list)
+    let i = 0
+    while i < count
+        let l = list[i]
+        if l.tag == tag or str(l.id) == str(tag)
+            l.active = 0
+            removed = 1
+        else
+            if l.active == 1
+                push(remaining, l)
+            end
+        end
+        i += 1
+    end
+    em.listeners[event_name] = remaining
+    return removed
+end
+
+# Returns the number of active listeners for a given event name
+function emitter_listener_count(em, event_name)
+    if em == null or event_name == null or em.listeners[event_name] == null
+        return 0
+    end
+    let list = em.listeners[event_name]
+    let active_count = 0
+    let count = len(list)
+    let i = 0
+    while i < count
+        if list[i].active == 1
+            active_count += 1
+        end
+        i += 1
+    end
+    return active_count
+end
+
+# Emits an event with payload data to all registered listeners
+# Returns an array of triggered listener tags (and auto-removes any `once` listeners)
+function emitter_emit(em, event_name, data = null)
+    if em == null or event_name == null or em.listeners[event_name] == null
+        return []
+    end
+    let list = em.listeners[event_name]
+    let triggered_tags = []
+    let remaining = []
+    let count = len(list)
+    let i = 0
+    while i < count
+        let l = list[i]
+        if l.active == 1
+            push(triggered_tags, l.tag)
+            if l.is_once == 1
+                l.active = 0
+            else
+                push(remaining, l)
+            end
+        end
+        i += 1
+    end
+    em.listeners[event_name] = remaining
+    return triggered_tags
+end
+
+# Clears all listeners for an event name, or all events if event_name is null
+function emitter_clear(em, event_name = null)
+    if em == null
+        return 0
+    end
+    if event_name == null
+        em.listeners = {}
+        return 1
+    end
+    if em.listeners[event_name] != null
+        em.listeners[event_name] = []
+        return 1
+    end
+    return 0
+end

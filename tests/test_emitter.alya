@@ -1,0 +1,53 @@
+# Comprehensive EventEmitter tests for event package
+import "std/test"
+import "../src/lib.alya" as ev
+
+function main()
+    test_suite("event Package EventEmitter Test Suite")
+    let r = runner_new()
+
+    let em = ev::emitter()
+    runner_assert(r, em != null, "emitter should not be null")
+    runner_assert_eq(r, ev::emitter_listener_count(em, "user_login"), 0, "initial listeners should be 0")
+
+    # 1. Register persistent listeners
+    let l1 = ev::emitter_on(em, "user_login", "audit_logger")
+    let l2 = ev::emitter_on(em, "user_login", "welcome_emailer")
+    runner_assert_eq(r, ev::emitter_listener_count(em, "user_login"), 2, "listeners should be 2")
+
+    # Emit event
+    let triggered = ev::emitter_emit(em, "user_login", {"user": "ali"})
+    runner_assert_eq(r, len(triggered), 2, "triggered count should be 2")
+    runner_assert_str_eq(r, triggered[0], "audit_logger", "first handler should be audit_logger")
+    runner_assert_str_eq(r, triggered[1], "welcome_emailer", "second handler should be welcome_emailer")
+    runner_assert_eq(r, ev::emitter_listener_count(em, "user_login"), 2, "persistent listeners should remain active")
+
+    # 2. Register once listener
+    let l_once = ev::emitter_once(em, "app_init", "setup_db")
+    runner_assert_eq(r, ev::emitter_listener_count(em, "app_init"), 1, "app_init should have 1 listener")
+
+    let trig_once_1 = ev::emitter_emit(em, "app_init", null)
+    runner_assert_eq(r, len(trig_once_1), 1, "app_init should trigger once on first emit")
+    runner_assert_str_eq(r, trig_once_1[0], "setup_db", "triggered tag should match")
+    runner_assert_eq(r, ev::emitter_listener_count(em, "app_init"), 0, "once listener should be auto-removed after emit")
+
+    let trig_once_2 = ev::emitter_emit(em, "app_init", null)
+    runner_assert_eq(r, len(trig_once_2), 0, "second emit should not trigger any listeners")
+
+    # 3. Deregister listener via off
+    let off_res = ev::emitter_off(em, "user_login", "welcome_emailer")
+    runner_assert_eq(r, off_res, 1, "emitter_off should return 1")
+    runner_assert_eq(r, ev::emitter_listener_count(em, "user_login"), 1, "remaining listeners should be 1")
+
+    let trig_after_off = ev::emitter_emit(em, "user_login", null)
+    runner_assert_eq(r, len(trig_after_off), 1, "only 1 listener should trigger")
+    runner_assert_str_eq(r, trig_after_off[0], "audit_logger", "audit_logger should be remaining listener")
+
+    # 4. Clear all listeners
+    ev::emitter_clear(em, "user_login")
+    runner_assert_eq(r, ev::emitter_listener_count(em, "user_login"), 0, "listeners should be 0 after clear")
+
+    runner_summary(r)
+end
+
+main()

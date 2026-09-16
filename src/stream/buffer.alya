@@ -1,0 +1,74 @@
+# Non-Blocking Stream Byte Buffer
+# Part of the Alya Language package ecosystem (https://github.com/alya-lang)
+
+import "../types.alya"
+
+# Appends incoming data chunk into the byte buffer
+function buffer_append(buf, chunk)
+    if buf == null or chunk == null or len(chunk) == 0
+        return 0
+    end
+    push(buf.chunks, chunk)
+    buf.total_bytes += len(chunk)
+    return len(chunk)
+end
+
+# Concatenates and returns the entire contents of the buffer as a single string
+function buffer_to_string(buf)
+    if buf == null or len(buf.chunks) == 0
+        return ""
+    end
+    let res = ""
+    let count = len(buf.chunks)
+    let i = 0
+    while i < count
+        res = res + buf.chunks[i]
+        i += 1
+    end
+    return res
+end
+
+# Clears the buffer contents and resets total byte count
+function buffer_clear(buf)
+    if buf != null
+        buf.chunks = []
+        buf.total_bytes = 0
+    end
+end
+
+# Returns total byte length accumulated in the buffer
+function buffer_len(buf)
+    if buf == null
+        return 0
+    end
+    return buf.total_bytes
+end
+
+# Extracts a line terminated by newline (\n or \r\n) from the buffer
+# Returns [line, has_line (1 or 0)]
+function buffer_read_line(buf)
+    if buf == null or buf.total_bytes == 0
+        return ["", 0]
+    end
+    let full = buffer_to_string(buf)
+    let idx = index_of(full, "\n")
+    if idx < 0
+        return ["", 0]
+    end
+
+    let line = substring(full, 0, idx)
+    # Strip trailing \r if CRLF
+    if len(line) > 0 and substring(line, len(line) - 1, 1) == "\r"
+        line = substring(line, 0, len(line) - 1)
+    end
+
+    # Keep remainder in the buffer
+    let remainder = substring(full, idx + 1, len(full) - (idx + 1))
+    buf.chunks = []
+    buf.total_bytes = 0
+    if len(remainder) > 0
+        buffer_append(buf, remainder)
+    end
+
+    return [line, 1]
+end

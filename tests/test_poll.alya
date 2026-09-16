@@ -32,7 +32,7 @@ function main()
     let events_conn = ev::loop_poll(loop, 50)
     runner_assert(r, len(events_conn) >= 1, "server should receive readable connect event")
     runner_assert_eq(r, events_conn[0].fd, srv, "event fd should match server socket")
-    runner_assert_eq(r, events_conn[0].event_type, ev::EVENT_READ(), "event type should be READ")
+    runner_assert_eq(r, events_conn[0].event_type, ev::EventType.Read, "event type should be READ")
     runner_assert_str_eq(r, events_conn[0].tag, "server_accept", "tag should match server_accept")
 
     # 5. Accept incoming client connection

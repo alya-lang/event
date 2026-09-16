@@ -59,28 +59,3 @@ end
 pub function unwatch(loop, fd)
     return watcher_remove(loop, fd)
 end
-
-# Event Type Constant Aliases (Backward Compatible)
-pub function EVENT_NONE()
-    return event_type_none()
-end
-
-pub function EVENT_READ()
-    return event_type_read()
-end
-
-pub function EVENT_WRITE()
-    return event_type_write()
-end
-
-pub function EVENT_TIMER()
-    return event_type_timer()
-end
-
-pub function EVENT_ERROR()
-    return event_type_error()
-end
-
-pub function EVENT_CLOSE()
-    return event_type_close()
-end

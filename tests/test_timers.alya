@@ -16,7 +16,7 @@ function main()
     let events = ev::loop_tick(loop, 0)
     runner_assert_eq(r, len(events), 1, "should have 1 expired timer event")
     let ev1 = events[0]
-    runner_assert_eq(r, ev1.event_type, ev::EVENT_TIMER(), "event type should be EVENT_TIMER")
+    runner_assert_eq(r, ev1.event_type, ev::EventType.Timer, "event type should be EVENT_TIMER")
     runner_assert_eq(r, ev1.timer_id, t1, "timer id should match t1")
     runner_assert_str_eq(r, ev1.tag, "fast_timer", "tag should be fast_timer")
     runner_assert_eq(r, ev1.data, 42, "data should match 42")

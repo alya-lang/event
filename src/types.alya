@@ -11,30 +11,6 @@ pub enum EventType
     Close
 end
 
-# --- Event Type Constants (Backward Compatible) ---
-pub function event_type_none()
-    return EventType.None
-end
-
-pub function event_type_read()
-    return EventType.Read
-end
-
-pub function event_type_write()
-    return EventType.Write
-end
-
-pub function event_type_timer()
-    return EventType.Timer
-end
-
-pub function event_type_error()
-    return EventType.Error
-end
-
-pub function event_type_close()
-    return EventType.Close
-end
 
 # Returns human-readable name of an event type using pattern matching
 pub function event_type_name(t)

@@ -167,8 +167,8 @@ let triggered = ev::emitter_emit(em, "order_created", {"order_id": 1001})
 
 | Function | Arguments | Returns | Description |
 |---|---|---|---|
-| `watch_read(loop, fd, tag, data)` | `loop`, `fd`, `tag = ""`, `data = null` | `integer` | Registers a non-blocking socket to watch for readable incoming data (`EVENT_READ`). |
-| `watch_write(loop, fd, tag, data)` | `loop`, `fd`, `tag = ""`, `data = null` | `integer` | Registers a non-blocking socket to watch for writable readiness (`EVENT_WRITE`). |
+| `watch_read(loop, fd, tag, data)` | `loop`, `fd`, `tag = ""`, `data = null` | `integer` | Registers a non-blocking socket to watch for readable incoming data (`EventType.Read`). |
+| `watch_write(loop, fd, tag, data)` | `loop`, `fd`, `tag = ""`, `data = null` | `integer` | Registers a non-blocking socket to watch for writable readiness (`EventType.Write`). |
 | `unwatch(loop, fd)` | `loop`, `fd` | `integer` | Deregisters all watchers associated with socket `fd`. Returns `1` if removed, `0` if not found. |
 
 ### Stream ByteBuffer
@@ -193,16 +193,16 @@ let triggered = ev::emitter_emit(em, "order_created", {"order_id": 1001})
 | `emitter_listener_count(em, event)` | `em`, `event: string` | `integer` | Returns count of active listeners for an event. |
 | `emitter_clear(em, event)` | `em`, `event = null` | `integer` | Clears all listeners for an event or all events if `event == null`. |
 
-### Event Types & Constants
+### Event Types & Enums
 
-| Constant Function | Value | Description |
+| Enum Variant | Value | Description |
 |---|---|---|
-| `EVENT_NONE()` | `0` | No event occurred / idle state. |
-| `EVENT_READ()` | `1` | Socket is ready to be read from. |
-| `EVENT_WRITE()` | `2` | Socket is ready to write data without blocking. |
-| `EVENT_TIMER()` | `3` | Scheduled timer or interval expired. |
-| `EVENT_ERROR()` | `4` | Socket error or exception occurred. |
-| `EVENT_CLOSE()` | `5` | Remote peer closed connection / EOF. |
+| `EventType.None` | `0` | No event occurred / idle state. |
+| `EventType.Read` | `1` | Socket is ready to be read from. |
+| `EventType.Write` | `2` | Socket is ready to write data without blocking. |
+| `EventType.Timer` | `3` | Scheduled timer or interval expired. |
+| `EventType.Error` | `4` | Socket error or exception occurred. |
+| `EventType.Close` | `5` | Remote peer closed connection / EOF. |
 | `event_type_name(t)` | String | Converts integer event constant into human-readable string (`"READ"`, `"TIMER"`, etc.). |
 
 ---

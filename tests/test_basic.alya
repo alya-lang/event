@@ -68,11 +68,11 @@ function main()
     buf.clear()
     runner_assert_eq(r, buf.len(), 0, "buffer should be empty after clear")
 
-    # 5. Type constants, enums, and pattern matching
-    runner_assert_eq(r, ev::EVENT_READ(), 1, "EVENT_READ should be 1")
-    runner_assert_eq(r, ev::EVENT_WRITE(), 2, "EVENT_WRITE should be 2")
-    runner_assert_eq(r, ev::EVENT_TIMER(), 3, "EVENT_TIMER should be 3")
-    runner_assert_eq(r, ev::EVENT_ERROR(), 4, "EVENT_ERROR should be 4")
+    # 5. Type enums and pattern matching
+    runner_assert_eq(r, ev::EventType.Read, 1, "EventType.Read should be 1")
+    runner_assert_eq(r, ev::EventType.Write, 2, "EventType.Write should be 2")
+    runner_assert_eq(r, ev::EventType.Timer, 3, "EventType.Timer should be 3")
+    runner_assert_eq(r, ev::EventType.Error, 4, "EventType.Error should be 4")
     runner_assert_str_eq(r, ev::event_type_name(1), "READ", "event_type_name(1) should be READ")
     runner_assert_str_eq(r, ev::event_type_name(3), "TIMER", "event_type_name(3) should be TIMER")
     runner_assert_str_eq(r, ev::event_type_name(99), "UNKNOWN", "event_type_name(99) should be UNKNOWN")

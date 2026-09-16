@@ -7,7 +7,7 @@ import "./watcher.alya"
 import "./poller.alya"
 
 # Creates a new initialized EventLoop instance
-function event_loop_new()
+pub function event_loop_new()
     return EventLoop {
         running: 0,
         timers: [],
@@ -20,16 +20,16 @@ function event_loop_new()
 end
 
 # Requests the event loop to stop
-function loop_stop(loop)
-    if loop != null
+pub function loop_stop(loop)
+    if loop is not null
         loop.stop_requested = 1
         loop.running = 0
     end
 end
 
 # Returns 1 if the event loop is active and has work to do, 0 otherwise
-function loop_is_running(loop)
-    if loop == null or loop.stop_requested == 1
+pub function loop_is_running(loop)
+    if loop is null or loop.stop_requested == 1
         return 0
     end
     let timers = timer_count_active(loop)
@@ -41,8 +41,8 @@ function loop_is_running(loop)
 end
 
 # Returns the total count of active handles (timers + I/O watchers)
-function loop_active_count(loop)
-    if loop == null
+pub function loop_active_count(loop)
+    if loop is null
         return 0
     end
     let t = timer_count_active(loop)
@@ -51,8 +51,8 @@ function loop_active_count(loop)
 end
 
 # Resets all state in the loop
-function loop_reset(loop)
-    if loop != null
+pub function loop_reset(loop)
+    if loop is not null
         loop.timers = []
         loop.watchers = []
         loop.stop_requested = 0
@@ -66,11 +66,11 @@ end
 # 2. Poll socket I/O watchers
 # 3. Collect expired timers
 # Returns an array of EventNotification records triggered in this tick
-function loop_tick(loop, max_wait_ms = 100)
-    if loop == null
+pub function loop_tick(loop, max_wait_ms = 100)
+    if loop is null
         return []
     end
-    if max_wait_ms == null or max_wait_ms < 0
+    if max_wait_ms is null or max_wait_ms < 0
         max_wait_ms = 0
     end
 
@@ -88,24 +88,67 @@ function loop_tick(loop, max_wait_ms = 100)
 
     # 4. Merge notifications
     let all_events = []
-    let i = 0
-    let io_len = len(io_events)
-    while i < io_len
-        push(all_events, io_events[i])
-        i += 1
+    for ev in io_events
+        push(all_events, ev)
     end
-
-    let j = 0
-    let timer_len = len(timer_events)
-    while j < timer_len
-        push(all_events, timer_events[j])
-        j += 1
+    for ev in timer_events
+        push(all_events, ev)
     end
 
     return all_events
 end
 
 # Polls the event loop for up to max_wait_ms milliseconds and returns all triggered events
-function loop_poll(loop, max_wait_ms = 100)
+pub function loop_poll(loop, max_wait_ms = 100)
     return loop_tick(loop, max_wait_ms)
+end
+
+# --- Struct Methods on EventLoop ---
+
+pub function EventLoop.stop(self)
+    loop_stop(self)
+end
+
+pub function EventLoop.is_running(self)
+    return loop_is_running(self)
+end
+
+pub function EventLoop.active_count(self)
+    return loop_active_count(self)
+end
+
+pub function EventLoop.reset(self)
+    loop_reset(self)
+end
+
+pub function EventLoop.tick(self, max_wait_ms = 100)
+    return loop_tick(self, max_wait_ms)
+end
+
+pub function EventLoop.poll(self, max_wait_ms = 100)
+    return loop_poll(self, max_wait_ms)
+end
+
+pub function EventLoop.timeout(self, delay_ms, tag = "", data = null)
+    return timer_add_timeout(self, delay_ms, tag, data)
+end
+
+pub function EventLoop.interval(self, interval_ms, tag = "", data = null)
+    return timer_add_interval(self, interval_ms, tag, data)
+end
+
+pub function EventLoop.clear_timer(self, timer_id)
+    return timer_cancel(self, timer_id)
+end
+
+pub function EventLoop.watch_read(self, fd, tag = "", data = null)
+    return watcher_add(self, fd, 1, tag, data)
+end
+
+pub function EventLoop.watch_write(self, fd, tag = "", data = null)
+    return watcher_add(self, fd, 2, tag, data)
+end
+
+pub function EventLoop.unwatch(self, fd)
+    return watcher_remove(self, fd)
 end

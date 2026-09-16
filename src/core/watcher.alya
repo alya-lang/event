@@ -5,15 +5,12 @@ import "../types.alya"
 
 # Registers an I/O watcher for socket `fd`
 # `events`: 1 (READ), 2 (WRITE), or 3 (READ | WRITE)
-function watcher_add(loop, fd, events = 1, tag = "", data = null)
-    if loop == null or fd == null or fd < 0
+pub function watcher_add(loop, fd, events = 1, tag = "", data = null)
+    if loop is null or fd is null or fd < 0
         return -1
     end
     # Check if an existing watcher for this fd is already registered
-    let count = len(loop.watchers)
-    let i = 0
-    while i < count
-        let w = loop.watchers[i]
+    for w in loop.watchers
         if w.fd == fd and w.active == 1
             # Update existing watcher with new events / tag / data
             w.events = events
@@ -21,7 +18,6 @@ function watcher_add(loop, fd, events = 1, tag = "", data = null)
             w.data = data
             return w.id
         end
-        i += 1
     end
 
     let wid = loop.next_watcher_id
@@ -33,16 +29,13 @@ end
 
 # Removes an I/O watcher for a socket descriptor
 # Returns 1 if found and removed, 0 otherwise
-function watcher_remove(loop, fd)
-    if loop == null or fd == null
+pub function watcher_remove(loop, fd)
+    if loop is null or fd is null
         return 0
     end
     let removed = 0
     let active_remaining = []
-    let count = len(loop.watchers)
-    let i = 0
-    while i < count
-        let w = loop.watchers[i]
+    for w in loop.watchers
         if w.fd == fd
             w.active = 0
             removed = 1
@@ -51,43 +44,34 @@ function watcher_remove(loop, fd)
                 push(active_remaining, w)
             end
         end
-        i += 1
     end
     loop.watchers = active_remaining
     return removed
 end
 
 # Returns the number of currently active socket watchers
-function watcher_count_active(loop)
-    if loop == null
+pub function watcher_count_active(loop)
+    if loop is null
         return 0
     end
     let active_count = 0
-    let count = len(loop.watchers)
-    let i = 0
-    while i < count
-        let w = loop.watchers[i]
+    for w in loop.watchers
         if w.active == 1
             active_count += 1
         end
-        i += 1
     end
     return active_count
 end
 
 # Finds an active watcher by socket descriptor
-function watcher_find(loop, fd)
-    if loop == null or fd == null
+pub function watcher_find(loop, fd)
+    if loop is null or fd is null
         return null
     end
-    let count = len(loop.watchers)
-    let i = 0
-    while i < count
-        let w = loop.watchers[i]
+    for w in loop.watchers
         if w.fd == fd and w.active == 1
             return w
         end
-        i += 1
     end
     return null
 end

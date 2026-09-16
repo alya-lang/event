@@ -6,73 +6,87 @@ function main()
     test_suite("event Package Basic Test Suite")
     let r = runner_new()
 
-    # 1. Loop initialization and state
+    # 1. Loop initialization and state (function API and struct methods)
     let loop = ev::loop()
-    runner_assert(r, loop != null, "loop should not be null")
+    runner_assert(r, loop is not null, "loop should not be null")
     runner_assert_eq(r, ev::loop_is_running(loop), 0, "fresh loop should not be running")
+    runner_assert_eq(r, loop.is_running(), 0, "loop.is_running() struct method works")
     runner_assert_eq(r, ev::loop_active_count(loop), 0, "active count should be 0")
+    runner_assert_eq(r, loop.active_count(), 0, "loop.active_count() struct method works")
 
-    # 2. Timer registration and cancellation
-    let t1 = ev::set_timeout(loop, 50, "task_1", 100)
-    let t2 = ev::set_interval(loop, 100, "task_2", 200)
+    # 2. Timer registration and cancellation via struct methods
+    let t1 = loop.timeout(50, "task_1", 100)
+    let t2 = loop.interval(100, "task_2", 200)
 
     runner_assert(r, t1 >= 1, "t1 id should be >= 1")
     runner_assert(r, t2 > t1, "t2 id should be greater than t1")
-    runner_assert_eq(r, ev::loop_active_count(loop), 2, "active count should be 2")
-    runner_assert_eq(r, ev::loop_is_running(loop), 1, "loop with timers should report active")
+    runner_assert_eq(r, loop.active_count(), 2, "active count should be 2")
+    runner_assert_eq(r, loop.is_running(), 1, "loop with timers should report active")
 
-    let cancelled = ev::clear_timer(loop, t1)
-    runner_assert_eq(r, cancelled, 1, "should cancel t1 successfully")
-    runner_assert_eq(r, ev::loop_active_count(loop), 1, "active count should drop to 1")
+    let cancelled = loop.clear_timer(t1)
+    runner_assert_eq(r, cancelled, 1, "should cancel t1 successfully via loop.clear_timer")
+    runner_assert_eq(r, loop.active_count(), 1, "active count should drop to 1")
 
-    let not_found = ev::clear_timer(loop, 9999)
+    let not_found = loop.clear_timer(9999)
     runner_assert_eq(r, not_found, 0, "cancelling non-existent timer should return 0")
 
-    # 3. Watcher registration and removal
-    let wid1 = ev::watch_read(loop, 10, "read_client", null)
-    let wid2 = ev::watch_write(loop, 11, "write_client", null)
+    # 3. Watcher registration and removal via struct methods
+    let wid1 = loop.watch_read(10, "read_client", null)
+    let wid2 = loop.watch_write(11, "write_client", null)
 
     runner_assert(r, wid1 >= 1, "watcher id should be valid")
     runner_assert(r, wid2 > wid1, "watcher id should be unique")
-    runner_assert_eq(r, ev::loop_active_count(loop), 3, "active handle count (1 timer + 2 watchers) should be 3")
+    runner_assert_eq(r, loop.active_count(), 3, "active handle count (1 timer + 2 watchers) should be 3")
 
-    let unwatch_res = ev::unwatch(loop, 10)
+    let unwatch_res = loop.unwatch(10)
     runner_assert_eq(r, unwatch_res, 1, "unwatch should return 1")
-    runner_assert_eq(r, ev::loop_active_count(loop), 2, "remaining handles should be 2")
+    runner_assert_eq(r, loop.active_count(), 2, "remaining handles should be 2")
 
-    let unwatch_again = ev::unwatch(loop, 10)
+    let unwatch_again = loop.unwatch(10)
     runner_assert_eq(r, unwatch_again, 0, "unwatching again should return 0")
 
-    # 4. Stream Byte Buffer operations
+    # 4. Stream Byte Buffer operations (struct methods and slicing)
     let buf = ev::buffer()
-    runner_assert_eq(r, ev::buffer_len(buf), 0, "initial buffer len should be 0")
+    runner_assert_eq(r, buf.len(), 0, "initial buffer len should be 0")
 
-    ev::buffer_append(buf, "Hello ")
-    ev::buffer_append(buf, "World\nSecond Line\n")
-    runner_assert(r, ev::buffer_len(buf) > 0, "buffer should have bytes")
+    buf.append("Hello ")
+    buf.append("World\nSecond Line\n")
+    runner_assert(r, buf.len() > 0, "buffer should have bytes")
 
-    let res1 = ev::buffer_read_line(buf)
+    let res1 = buf.read_line()
     runner_assert_eq(r, res1[1], 1, "should have read first line")
     runner_assert_str_eq(r, res1[0], "Hello World", "first line content mismatch")
 
-    let res2 = ev::buffer_read_line(buf)
+    let res2 = buf.read_line()
     runner_assert_eq(r, res2[1], 1, "should have read second line")
     runner_assert_str_eq(r, res2[0], "Second Line", "second line content mismatch")
 
-    let res3 = ev::buffer_read_line(buf)
+    let res3 = buf.read_line()
     runner_assert_eq(r, res3[1], 0, "should not have third line")
     runner_assert_str_eq(r, res3[0], "", "third line should be empty")
 
-    ev::buffer_clear(buf)
-    runner_assert_eq(r, ev::buffer_len(buf), 0, "buffer should be empty after clear")
+    buf.clear()
+    runner_assert_eq(r, buf.len(), 0, "buffer should be empty after clear")
 
-    # 5. Type constants and names
+    # 5. Type constants, enums, and pattern matching
     runner_assert_eq(r, ev::EVENT_READ(), 1, "EVENT_READ should be 1")
     runner_assert_eq(r, ev::EVENT_WRITE(), 2, "EVENT_WRITE should be 2")
     runner_assert_eq(r, ev::EVENT_TIMER(), 3, "EVENT_TIMER should be 3")
     runner_assert_eq(r, ev::EVENT_ERROR(), 4, "EVENT_ERROR should be 4")
     runner_assert_str_eq(r, ev::event_type_name(1), "READ", "event_type_name(1) should be READ")
     runner_assert_str_eq(r, ev::event_type_name(3), "TIMER", "event_type_name(3) should be TIMER")
+    runner_assert_str_eq(r, ev::event_type_name(99), "UNKNOWN", "event_type_name(99) should be UNKNOWN")
+
+    # 6. EventEmitter struct methods
+    let em = ev::emitter()
+    let lid = em.on("test_event", "tag1")
+    runner_assert(r, lid >= 1, "listener registered via em.on")
+    runner_assert_eq(r, em.listener_count("test_event"), 1, "em.listener_count works")
+    let trig = em.emit("test_event", "hello")
+    runner_assert_eq(r, len(trig), 1, "em.emit works")
+    runner_assert_str_eq(r, trig[0], "tag1", "trig tag matches")
+    em.clear("test_event")
+    runner_assert_eq(r, em.listener_count("test_event"), 0, "em.clear works")
 
     runner_summary(r)
 end

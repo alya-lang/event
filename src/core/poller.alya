@@ -6,8 +6,8 @@ import "../types.alya"
 
 # Polls all registered active watchers for readiness within the allocated timeout
 # Returns an array of EventNotification structs
-function poller_poll_watchers(loop, wait_ms = 0)
-    if loop == null
+pub function poller_poll_watchers(loop, wait_ms = 0)
+    if loop is null
         return []
     end
     let events = []
@@ -24,10 +24,11 @@ function poller_poll_watchers(loop, wait_ms = 0)
         let w = loop.watchers[0]
         if w.active == 1
             let res = tcp_poll(w.fd, wait_ms)
-            if res == 1
-                push(events, event_notification_new(1, w.fd, -1, w.tag, w.data))
-            elif res == -1
-                push(events, event_notification_new(4, w.fd, -1, w.tag, w.data))
+            when res
+                is 1 then
+                    push(events, event_notification_new(EventType.Read, w.fd, -1, w.tag, w.data))
+                is -1 then
+                    push(events, event_notification_new(EventType.Error, w.fd, -1, w.tag, w.data))
             end
         end
         return events
@@ -35,18 +36,16 @@ function poller_poll_watchers(loop, wait_ms = 0)
 
     # Multi-watcher path:
     # 1. Non-blocking probe first (timeout = 0)
-    let i = 0
-    while i < w_count
-        let w = loop.watchers[i]
+    for w in loop.watchers
         if w.active == 1
             let res = tcp_poll(w.fd, 0)
-            if res == 1
-                push(events, event_notification_new(1, w.fd, -1, w.tag, w.data))
-            elif res == -1
-                push(events, event_notification_new(4, w.fd, -1, w.tag, w.data))
+            when res
+                is 1 then
+                    push(events, event_notification_new(EventType.Read, w.fd, -1, w.tag, w.data))
+                is -1 then
+                    push(events, event_notification_new(EventType.Error, w.fd, -1, w.tag, w.data))
             end
         end
-        i += 1
     end
 
     # If events were found or zero wait was requested, return immediately
@@ -58,18 +57,16 @@ function poller_poll_watchers(loop, wait_ms = 0)
     let start = clock_ms()
     while (clock_ms() - start) < wait_ms
         sleep(2)
-        let j = 0
-        while j < w_count
-            let w = loop.watchers[j]
+        for w in loop.watchers
             if w.active == 1
                 let res = tcp_poll(w.fd, 0)
-                if res == 1
-                    push(events, event_notification_new(1, w.fd, -1, w.tag, w.data))
-                elif res == -1
-                    push(events, event_notification_new(4, w.fd, -1, w.tag, w.data))
+                when res
+                    is 1 then
+                        push(events, event_notification_new(EventType.Read, w.fd, -1, w.tag, w.data))
+                    is -1 then
+                        push(events, event_notification_new(EventType.Error, w.fd, -1, w.tag, w.data))
                 end
             end
-            j += 1
         end
         if len(events) > 0
             break

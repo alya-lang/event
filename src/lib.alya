@@ -12,75 +12,75 @@ import "./stream/buffer.alya"
 # --- Convenience Aliases ---
 
 # Factory alias for EventLoop
-function loop()
+pub function loop()
     return event_loop_new()
 end
 
-function loop_new()
+pub function loop_new()
     return event_loop_new()
 end
 
 # Factory alias for EventEmitter
-function emitter()
+pub function emitter()
     return event_emitter_new()
 end
 
 # Factory alias for ByteBuffer
-function buffer()
+pub function buffer()
     return byte_buffer_new()
 end
 
 # Convenience alias for adding a timeout
-function set_timeout(loop, delay_ms, tag = "", data = null)
+pub function set_timeout(loop, delay_ms, tag = "", data = null)
     return timer_add_timeout(loop, delay_ms, tag, data)
 end
 
 # Convenience alias for adding an interval
-function set_interval(loop, interval_ms, tag = "", data = null)
+pub function set_interval(loop, interval_ms, tag = "", data = null)
     return timer_add_interval(loop, interval_ms, tag, data)
 end
 
 # Convenience alias for clearing a timer
-function clear_timer(loop, timer_id)
+pub function clear_timer(loop, timer_id)
     return timer_cancel(loop, timer_id)
 end
 
 # Convenience alias for watching a socket for readable incoming data
-function watch_read(loop, fd, tag = "", data = null)
+pub function watch_read(loop, fd, tag = "", data = null)
     return watcher_add(loop, fd, 1, tag, data)
 end
 
 # Convenience alias for watching a socket for writable readiness
-function watch_write(loop, fd, tag = "", data = null)
+pub function watch_write(loop, fd, tag = "", data = null)
     return watcher_add(loop, fd, 2, tag, data)
 end
 
 # Convenience alias for unwatching a socket
-function unwatch(loop, fd)
+pub function unwatch(loop, fd)
     return watcher_remove(loop, fd)
 end
 
-# Event Type Constant Aliases
-function EVENT_NONE()
+# Event Type Constant Aliases (Backward Compatible)
+pub function EVENT_NONE()
     return event_type_none()
 end
 
-function EVENT_READ()
+pub function EVENT_READ()
     return event_type_read()
 end
 
-function EVENT_WRITE()
+pub function EVENT_WRITE()
     return event_type_write()
 end
 
-function EVENT_TIMER()
+pub function EVENT_TIMER()
     return event_type_timer()
 end
 
-function EVENT_ERROR()
+pub function EVENT_ERROR()
     return event_type_error()
 end
 
-function EVENT_CLOSE()
+pub function EVENT_CLOSE()
     return event_type_close()
 end

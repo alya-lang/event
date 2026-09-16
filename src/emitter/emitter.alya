@@ -4,14 +4,14 @@
 import "../types.alya"
 
 # Creates a new EventEmitter instance
-function emitter_new()
+pub function emitter_new()
     return event_emitter_new()
 end
 
 # Registers a persistent listener tag for an event
 # Returns assigned listener ID
-function emitter_on(em, event_name, tag)
-    if em == null or event_name == null or len(event_name) == 0
+pub function emitter_on(em, event_name, tag)
+    if em is null or event_name is null or len(event_name) == 0
         return -1
     end
     let lid = em.next_id
@@ -25,7 +25,7 @@ function emitter_on(em, event_name, tag)
         active: 1
     }
 
-    if em.listeners[event_name] == null
+    if event_name not in em.listeners
         em.listeners[event_name] = []
     end
     push(em.listeners[event_name], listener)
@@ -33,8 +33,8 @@ function emitter_on(em, event_name, tag)
 end
 
 # Registers a one-time listener tag that automatically deregisters after being emitted once
-function emitter_once(em, event_name, tag)
-    if em == null or event_name == null or len(event_name) == 0
+pub function emitter_once(em, event_name, tag)
+    if em is null or event_name is null or len(event_name) == 0
         return -1
     end
     let lid = em.next_id
@@ -48,7 +48,7 @@ function emitter_once(em, event_name, tag)
         active: 1
     }
 
-    if em.listeners[event_name] == null
+    if event_name not in em.listeners
         em.listeners[event_name] = []
     end
     push(em.listeners[event_name], listener)
@@ -57,17 +57,14 @@ end
 
 # Removes a listener from an event by tag or ID
 # Returns 1 if removed, 0 if not found
-function emitter_off(em, event_name, tag)
-    if em == null or event_name == null or em.listeners[event_name] == null
+pub function emitter_off(em, event_name, tag)
+    if em is null or event_name is null or event_name not in em.listeners
         return 0
     end
     let list = em.listeners[event_name]
     let removed = 0
     let remaining = []
-    let count = len(list)
-    let i = 0
-    while i < count
-        let l = list[i]
+    for l in list
         if l.tag == tag or str(l.id) == str(tag)
             l.active = 0
             removed = 1
@@ -76,43 +73,36 @@ function emitter_off(em, event_name, tag)
                 push(remaining, l)
             end
         end
-        i += 1
     end
     em.listeners[event_name] = remaining
     return removed
 end
 
 # Returns the number of active listeners for a given event name
-function emitter_listener_count(em, event_name)
-    if em == null or event_name == null or em.listeners[event_name] == null
+pub function emitter_listener_count(em, event_name)
+    if em is null or event_name is null or event_name not in em.listeners
         return 0
     end
     let list = em.listeners[event_name]
     let active_count = 0
-    let count = len(list)
-    let i = 0
-    while i < count
-        if list[i].active == 1
+    for l in list
+        if l.active == 1
             active_count += 1
         end
-        i += 1
     end
     return active_count
 end
 
 # Emits an event with payload data to all registered listeners
 # Returns an array of triggered listener tags (and auto-removes any `once` listeners)
-function emitter_emit(em, event_name, data = null)
-    if em == null or event_name == null or em.listeners[event_name] == null
+pub function emitter_emit(em, event_name, data = null)
+    if em is null or event_name is null or event_name not in em.listeners
         return []
     end
     let list = em.listeners[event_name]
     let triggered_tags = []
     let remaining = []
-    let count = len(list)
-    let i = 0
-    while i < count
-        let l = list[i]
+    for l in list
         if l.active == 1
             push(triggered_tags, l.tag)
             if l.is_once == 1
@@ -121,24 +111,49 @@ function emitter_emit(em, event_name, data = null)
                 push(remaining, l)
             end
         end
-        i += 1
     end
     em.listeners[event_name] = remaining
     return triggered_tags
 end
 
 # Clears all listeners for an event name, or all events if event_name is null
-function emitter_clear(em, event_name = null)
-    if em == null
+pub function emitter_clear(em, event_name = null)
+    if em is null
         return 0
     end
-    if event_name == null
+    if event_name is null
         em.listeners = {}
         return 1
     end
-    if em.listeners[event_name] != null
+    if event_name in em.listeners
         em.listeners[event_name] = []
         return 1
     end
     return 0
+end
+
+# --- Struct Methods on EventEmitter ---
+
+pub function EventEmitter.on(self, event_name, tag)
+    return emitter_on(self, event_name, tag)
+end
+
+pub function EventEmitter.once(self, event_name, tag)
+    return emitter_once(self, event_name, tag)
+end
+
+pub function EventEmitter.off(self, event_name, tag)
+    return emitter_off(self, event_name, tag)
+end
+
+pub function EventEmitter.listener_count(self, event_name)
+    return emitter_listener_count(self, event_name)
+end
+
+pub function EventEmitter.emit(self, event_name, data = null)
+    return emitter_emit(self, event_name, data)
+end
+
+pub function EventEmitter.clear(self, event_name = null)
+    return emitter_clear(self, event_name)
 end

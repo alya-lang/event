@@ -4,8 +4,8 @@
 import "../types.alya"
 
 # Appends incoming data chunk into the byte buffer
-function buffer_append(buf, chunk)
-    if buf == null or chunk == null or len(chunk) == 0
+pub function buffer_append(buf, chunk)
+    if buf is null or chunk is null or len(chunk) == 0
         return 0
     end
     push(buf.chunks, chunk)
@@ -14,31 +14,28 @@ function buffer_append(buf, chunk)
 end
 
 # Concatenates and returns the entire contents of the buffer as a single string
-function buffer_to_string(buf)
-    if buf == null or len(buf.chunks) == 0
+pub function buffer_to_string(buf)
+    if buf is null or len(buf.chunks) == 0
         return ""
     end
     let res = ""
-    let count = len(buf.chunks)
-    let i = 0
-    while i < count
-        res = res + buf.chunks[i]
-        i += 1
+    for chunk in buf.chunks
+        res += chunk
     end
     return res
 end
 
 # Clears the buffer contents and resets total byte count
-function buffer_clear(buf)
-    if buf != null
+pub function buffer_clear(buf)
+    if buf is not null
         buf.chunks = []
         buf.total_bytes = 0
     end
 end
 
 # Returns total byte length accumulated in the buffer
-function buffer_len(buf)
-    if buf == null
+pub function buffer_len(buf)
+    if buf is null
         return 0
     end
     return buf.total_bytes
@@ -46,8 +43,8 @@ end
 
 # Extracts a line terminated by newline (\n or \r\n) from the buffer
 # Returns [line, has_line (1 or 0)]
-function buffer_read_line(buf)
-    if buf == null or buf.total_bytes == 0
+pub function buffer_read_line(buf)
+    if buf is null or buf.total_bytes == 0
         return ["", 0]
     end
     let full = buffer_to_string(buf)
@@ -56,14 +53,14 @@ function buffer_read_line(buf)
         return ["", 0]
     end
 
-    let line = substring(full, 0, idx)
+    let line = full[0..idx]
     # Strip trailing \r if CRLF
-    if len(line) > 0 and substring(line, len(line) - 1, 1) == "\r"
-        line = substring(line, 0, len(line) - 1)
+    if len(line) > 0 and line[(len(line) - 1)..len(line)] == "\r"
+        line = line[0..(len(line) - 1)]
     end
 
     # Keep remainder in the buffer
-    let remainder = substring(full, idx + 1, len(full) - (idx + 1))
+    let remainder = full[(idx + 1)..len(full)]
     buf.chunks = []
     buf.total_bytes = 0
     if len(remainder) > 0
@@ -71,4 +68,26 @@ function buffer_read_line(buf)
     end
 
     return [line, 1]
+end
+
+# --- Struct Methods on ByteBuffer ---
+
+pub function ByteBuffer.append(self, chunk)
+    return buffer_append(self, chunk)
+end
+
+pub function ByteBuffer.to_string(self)
+    return buffer_to_string(self)
+end
+
+pub function ByteBuffer.clear(self)
+    buffer_clear(self)
+end
+
+pub function ByteBuffer.len(self)
+    return buffer_len(self)
+end
+
+pub function ByteBuffer.read_line(self)
+    return buffer_read_line(self)
 end

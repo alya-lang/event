@@ -118,7 +118,6 @@ struct EventLoop
     next_watcher_id
     tick_count
     stop_requested
-    time_ms
 end
 
 # --- Stream Byte Buffer ---

@@ -15,21 +15,8 @@ function event_loop_new()
         next_timer_id: 1,
         next_watcher_id: 1,
         tick_count: 0,
-        stop_requested: 0,
-        time_ms: clock_ms()
+        stop_requested: 0
     }
-end
-
-# Returns the current monotonic time in milliseconds tracked by the loop
-function loop_now(loop)
-    if loop == null
-        return clock_ms()
-    end
-    let c = clock_ms()
-    if c > loop.time_ms
-        loop.time_ms = c
-    end
-    return loop.time_ms
 end
 
 # Requests the event loop to stop
@@ -71,7 +58,6 @@ function loop_reset(loop)
         loop.stop_requested = 0
         loop.running = 0
         loop.tick_count = 0
-        loop.time_ms = clock_ms()
     end
 end
 
@@ -97,13 +83,7 @@ function loop_tick(loop, max_wait_ms = 100)
     # 2. I/O Polling Phase
     let io_events = poller_poll_watchers(loop, wait_ms)
 
-    # 3. Advance loop clock by the elapsed sleep duration
-    if wait_ms > 0
-        loop.time_ms += wait_ms
-    end
-    let _ = loop_now(loop)
-
-    # 4. Timers Phase
+    # 3. Timers Phase
     let timer_events = timer_collect_expired(loop)
 
     # 4. Merge notifications

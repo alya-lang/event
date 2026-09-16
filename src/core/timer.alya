@@ -3,21 +3,6 @@
 
 import "../types.alya"
 
-# Helper to read the monotonic time from the loop instance
-function loop_get_time(loop)
-    if loop == null
-        return clock_ms()
-    end
-    let c = clock_ms()
-    if loop.time_ms != null and loop.time_ms > c
-        return loop.time_ms
-    end
-    if loop.time_ms != null
-        loop.time_ms = c
-    end
-    return c
-end
-
 # Registers a one-shot timeout in the loop
 # Returns the assigned timer ID (integer >= 1)
 function timer_add_timeout(loop, delay_ms, tag = "", data = null)
@@ -29,7 +14,7 @@ function timer_add_timeout(loop, delay_ms, tag = "", data = null)
     end
     let tid = loop.next_timer_id
     loop.next_timer_id += 1
-    let now = loop_get_time(loop)
+    let now = clock_ms()
     let deadline = now + delay_ms
     let t = timer_new(tid, deadline, 0, tag, data)
     push(loop.timers, t)
@@ -47,7 +32,7 @@ function timer_add_interval(loop, interval_ms, tag = "", data = null)
     end
     let tid = loop.next_timer_id
     loop.next_timer_id += 1
-    let now = loop_get_time(loop)
+    let now = clock_ms()
     let deadline = now + interval_ms
     let t = timer_new(tid, deadline, interval_ms, tag, data)
     push(loop.timers, t)
@@ -97,7 +82,7 @@ function timer_nearest_wait_ms(loop, max_wait_ms = 1000)
     if loop == null
         return max_wait_ms
     end
-    let now = loop_get_time(loop)
+    let now = clock_ms()
     let min_wait = max_wait_ms
     let has_active = 0
 
@@ -129,7 +114,7 @@ function timer_collect_expired(loop)
     if loop == null
         return []
     end
-    let now = loop_get_time(loop)
+    let now = clock_ms()
     let expired = []
     let active_remaining = []
 

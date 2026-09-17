@@ -1,7 +1,7 @@
 # High-Level TCP Stream with Flow Control & Backpressure
 # Part of the Alya Language package ecosystem (https://github.com/alya-lang)
 
-import "std/net"
+import "std/net" as net
 import "../types.alya"
 import "./buffer.alya"
 import "./reader.alya"
@@ -16,12 +16,12 @@ pub function tcp_stream_new(loop, fd, high_water_mark = 65536)
         high_water_mark = 65536
     end
 
-    tcp_set_nonblocking(fd, 1)
+    net::tcp_set_nonblocking(fd, 1)
 
     let stream = TcpStream {
         loop: loop,
         fd: fd,
-        peer_addr: tcp_peer_addr(fd),
+        peer_addr: net::tcp_peer_addr(fd),
         tag: "tcp_stream",
         data: null,
         closed: 0,
@@ -29,8 +29,8 @@ pub function tcp_stream_new(loop, fd, high_water_mark = 65536)
         high_water_mark: high_water_mark,
         write_buf: byte_buffer_new(),
         reader: stream_reader_new("\n"),
-        peer_ip: tcp_peer_ip(fd),
-        peer_port: tcp_peer_port(fd),
+        peer_ip: net::tcp_peer_ip(fd),
+        peer_port: net::tcp_peer_port(fd),
         on_data_cb: null,
         on_line_cb: null,
         on_close_cb: null,
@@ -63,7 +63,7 @@ pub function tcp_stream_write(stream, data)
     end
 
     # Attempt direct non-blocking transmission
-    let sent = tcp_send(stream.fd, data)
+    let sent = net::tcp_send(stream.fd, data)
     if sent < 0
         # Would block or socket error: queue into write buffer
         stream.write_buf.append(data)
@@ -109,7 +109,7 @@ pub function tcp_stream_flush(stream)
     end
 
     let pending = stream.write_buf.to_string()
-    let sent = tcp_send(stream.fd, pending)
+    let sent = net::tcp_send(stream.fd, pending)
     if sent > 0
         if sent >= len(pending)
             stream.write_buf.clear()
@@ -147,7 +147,7 @@ pub function tcp_stream_read(stream, max_bytes = 4096)
         max_bytes = 4096
     end
 
-    let chunk = tcp_recv(stream.fd, max_bytes)
+    let chunk = net::tcp_recv(stream.fd, max_bytes)
     if chunk == ""
         # Peer disconnected or EOF
         tcp_stream_close(stream)
@@ -220,13 +220,13 @@ pub function TcpStream.resume(self)
 end
 
 # Closes socket and unregisters all watchers from event loop
-pub function tcp_stream_close(stream)
+pub function tcp_stream_close(stream: TcpStream)
     if stream is null or stream.closed == 1
         return 0
     end
     stream.closed = 1
     stream.loop.unwatch(stream.fd)
-    tcp_close(stream.fd)
+    net::tcp_close(stream.fd)
     let cb = stream.on_close_cb
     if cb is not null
         cb(stream)

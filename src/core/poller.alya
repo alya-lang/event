@@ -1,7 +1,7 @@
 # Cross-Platform Socket Poller & Kernel Multiplexer
 # Part of the Alya Language package ecosystem (https://github.com/alya-lang)
 
-import "std/net"
+import "std/net" as net
 import "../types.alya"
 import "./watcher.alya"
 
@@ -27,7 +27,7 @@ pub function poller_poll_watchers(loop, wait_ms = 0)
             return events
         end
         for ev in uv_events
-            let w = watcher_find(loop, ev.fd)
+            let w: IoWatcher = watcher_find(loop, ev.fd)
             if w is null
                 w = watcher_find_by_id(loop, ev.udata)
             end
@@ -38,11 +38,11 @@ pub function poller_poll_watchers(loop, wait_ms = 0)
             let tag = w.tag
             let data = w.data
 
-            # Map uv kernel events back to EventNotification
-            if (ev.events & 1) != 0 # Readable
+            # Map uv kernel events back to EventNotification matching watcher interest
+            if (w.events & 1) != 0 and (ev.events & 1) != 0 # Readable
                 push(events, event_notification_new(EventType.Read, real_fd, -1, tag, data))
             end
-            if (ev.events & 2) != 0 # Writable
+            if (w.events & 2) != 0 and (ev.events & 2) != 0 # Writable
                 push(events, event_notification_new(EventType.Write, real_fd, -1, tag, data))
             end
             if (ev.events & 4) != 0 or (ev.events & 8) != 0 # Error or Hangup
@@ -60,7 +60,7 @@ pub function poller_poll_watchers(loop, wait_ms = 0)
     if w_count == 1
         let w = loop.watchers[0]
         if w.active == 1
-            let res = tcp_poll(w.fd, wait_ms)
+            let res = net::tcp_poll(w.fd, wait_ms)
             when res
                 is 1 then
                     push(events, event_notification_new(EventType.Read, w.fd, -1, w.tag, w.data))
@@ -75,7 +75,7 @@ pub function poller_poll_watchers(loop, wait_ms = 0)
     # 1. Non-blocking probe first (timeout = 0)
     for w in loop.watchers
         if w.active == 1
-            let res = tcp_poll(w.fd, 0)
+            let res = net::tcp_poll(w.fd, 0)
             when res
                 is 1 then
                     push(events, event_notification_new(EventType.Read, w.fd, -1, w.tag, w.data))
@@ -96,7 +96,7 @@ pub function poller_poll_watchers(loop, wait_ms = 0)
         sleep(2)
         for w in loop.watchers
             if w.active == 1
-                let res = tcp_poll(w.fd, 0)
+                let res = net::tcp_poll(w.fd, 0)
                 when res
                     is 1 then
                         push(events, event_notification_new(EventType.Read, w.fd, -1, w.tag, w.data))

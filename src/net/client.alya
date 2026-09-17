@@ -1,7 +1,7 @@
 # Non-Blocking TCP Client Connection
 # Part of the Alya Language package ecosystem (https://github.com/alya-lang)
 
-import "std/net"
+import "std/net" as net
 import "../types.alya"
 import "../stream/stream.alya"
 
@@ -15,7 +15,7 @@ pub function tcp_client_connect(loop, host, port, on_connect = null, on_error = 
         return null
     end
 
-    let client_fd = tcp_connect(host, port)
+    let client_fd = net::tcp_connect(host, port)
     if client_fd < 0
         if on_error is not null
             on_error(null, "Failed to connect to " + host + ":" + str(port))

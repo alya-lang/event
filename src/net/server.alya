@@ -1,7 +1,7 @@
 # Event-Driven TCP Server
 # Part of the Alya Language package ecosystem (https://github.com/alya-lang)
 
-import "std/net"
+import "std/net" as net
 import "../types.alya"
 import "../stream/stream.alya"
 
@@ -16,7 +16,7 @@ pub function tcp_server_listen(loop, host, port, on_connect, on_error = null, ba
         backlog = 128
     end
 
-    let srv_fd = tcp_listen(port, backlog)
+    let srv_fd = net::tcp_listen(port, backlog)
     if srv_fd < 0
         if on_error is not null
             on_error(null, "Failed to bind or listen on port " + str(port))
@@ -24,9 +24,9 @@ pub function tcp_server_listen(loop, host, port, on_connect, on_error = null, ba
         return null
     end
 
-    tcp_set_nonblocking(srv_fd, 1)
+    net::tcp_set_nonblocking(srv_fd, 1)
 
-    let server = TcpServer {
+    let srv = TcpServer {
         loop: loop,
         fd: srv_fd,
         host: host,
@@ -41,18 +41,18 @@ pub function tcp_server_listen(loop, host, port, on_connect, on_error = null, ba
     }
 
     # Register server socket with the event loop
-    loop.watch_read(srv_fd, "tcp_server", server)
-    return server
+    loop.watch_read(srv_fd, "tcp_server", srv)
+    return srv
 end
 
 # Accepts incoming client connections non-blockingly and wraps each in a TcpStream
-pub function tcp_server_accept(server)
+pub function tcp_server_accept(server: TcpServer)
     if server is null or server.listening == 0 or server.fd < 0
         return 0
     end
     let count = 0
-    while tcp_poll(server.fd, 0) == 1
-        let client_fd = tcp_accept(server.fd)
+    while net::tcp_poll(server.fd, 0) == 1
+        let client_fd = net::tcp_accept(server.fd)
         if client_fd < 0
             break
         end
@@ -73,7 +73,7 @@ pub function TcpServer.accept_connections(self)
 end
 
 # Stops server, closes all active connected client streams, and closes listener socket
-pub function tcp_server_close(server)
+pub function tcp_server_close(server: TcpServer)
     if server is null or server.listening == 0
         return 0
     end
@@ -85,7 +85,7 @@ pub function tcp_server_close(server)
     end
     server.clients = []
 
-    tcp_close(server.fd)
+    net::tcp_close(server.fd)
     return 1
 end
 

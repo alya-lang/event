@@ -73,7 +73,7 @@ pub function watcher_count_active(loop)
 end
 
 # Finds an active watcher by socket descriptor
-pub function watcher_find(loop, fd)
+pub function watcher_find(loop, fd) -> IoWatcher
     if loop is null or fd is null
         return null
     end
@@ -86,7 +86,7 @@ pub function watcher_find(loop, fd)
 end
 
 # Finds an active watcher by unique watcher ID
-pub function watcher_find_by_id(loop, wid)
+pub function watcher_find_by_id(loop, wid) -> IoWatcher
     if loop is null or wid is null
         return null
     end

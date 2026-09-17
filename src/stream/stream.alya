@@ -89,7 +89,7 @@ pub function tcp_stream_write(stream, data)
     return 1
 end
 
-pub function TcpStream.write(self, data)
+pub function TcpStream.write(self: TcpStream, data)
     return tcp_stream_write(self, data)
 end
 
@@ -134,7 +134,7 @@ pub function tcp_stream_flush(stream)
     return 0
 end
 
-pub function TcpStream.flush(self)
+pub function TcpStream.flush(self: TcpStream)
     return tcp_stream_flush(self)
 end
 
@@ -197,7 +197,7 @@ pub function tcp_stream_pause(stream)
     return 1
 end
 
-pub function TcpStream.pause(self)
+pub function TcpStream.pause(self: TcpStream)
     return tcp_stream_pause(self)
 end
 
@@ -215,7 +215,7 @@ pub function tcp_stream_resume(stream)
     return 1
 end
 
-pub function TcpStream.resume(self)
+pub function TcpStream.resume(self: TcpStream)
     return tcp_stream_resume(self)
 end
 
@@ -234,7 +234,7 @@ pub function tcp_stream_close(stream: TcpStream)
     return 1
 end
 
-pub function TcpStream.close(self)
+pub function TcpStream.close(self: TcpStream)
     return tcp_stream_close(self)
 end
 
@@ -246,7 +246,7 @@ pub function stream_on_data(stream, callback)
     return stream
 end
 
-pub function TcpStream.on_data(self, callback)
+pub function TcpStream.on_data(self: TcpStream, callback)
     return stream_on_data(self, callback)
 end
 
@@ -258,7 +258,7 @@ pub function stream_on_line(stream, callback)
     return stream
 end
 
-pub function TcpStream.on_line(self, callback)
+pub function TcpStream.on_line(self: TcpStream, callback)
     return stream_on_line(self, callback)
 end
 
@@ -288,7 +288,7 @@ pub function stream_close(stream)
 end
 
 # Registers a socket disconnect / close callback: function(stream)
-pub function TcpStream.on_close(self, callback)
+pub function TcpStream.on_close(self: TcpStream, callback)
     if self is not null
         self.on_close_cb = callback
     end
@@ -296,7 +296,7 @@ pub function TcpStream.on_close(self, callback)
 end
 
 # Registers an error callback: function(stream, error_msg)
-pub function TcpStream.on_error(self, callback)
+pub function TcpStream.on_error(self: TcpStream, callback)
     if self is not null
         self.on_error_cb = callback
     end
@@ -304,7 +304,7 @@ pub function TcpStream.on_error(self, callback)
 end
 
 # Registers a write buffer drain callback: function(stream)
-pub function TcpStream.on_drain(self, callback)
+pub function TcpStream.on_drain(self: TcpStream, callback)
     if self is not null
         self.on_drain_cb = callback
     end
@@ -312,7 +312,7 @@ pub function TcpStream.on_drain(self, callback)
 end
 
 # Returns 1 if stream is paused, 0 otherwise
-pub function TcpStream.is_paused(self)
+pub function TcpStream.is_paused(self: TcpStream)
     if self is null
         return 0
     end
@@ -320,7 +320,7 @@ pub function TcpStream.is_paused(self)
 end
 
 # Returns 1 if stream is closed, 0 otherwise
-pub function TcpStream.is_closed(self)
+pub function TcpStream.is_closed(self: TcpStream)
     if self is null
         return 1
     end
@@ -328,7 +328,7 @@ pub function TcpStream.is_closed(self)
 end
 
 # Returns count of pending unsent bytes in write buffer
-pub function TcpStream.buffered_bytes(self)
+pub function TcpStream.buffered_bytes(self: TcpStream)
     if self is null
         return 0
     end

@@ -130,14 +130,14 @@ pub struct EventLoop
 end
 
 # --- Stream Byte Buffer ---
-pub struct ByteBuffer
+pub struct StreamBuffer
     chunks,
     total_bytes
 end
 
-# Constructs a ByteBuffer instance
+# Constructs a StreamBuffer instance
 pub function byte_buffer_new()
-    return ByteBuffer {
+    return StreamBuffer {
         chunks: [],
         total_bytes: 0
     }

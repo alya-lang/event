@@ -110,7 +110,7 @@ pub function TcpServer.is_listening(self)
 end
 
 # Registers or updates the connection callback: function(server, client_stream)
-pub function TcpServer.on_connect(self, callback)
+pub function TcpServer.on_connect(self: TcpServer, callback)
     if self is not null
         self.on_connect_cb = callback
     end
@@ -118,7 +118,7 @@ pub function TcpServer.on_connect(self, callback)
 end
 
 # Registers or updates the error callback: function(server, error_msg)
-pub function TcpServer.on_error(self, callback)
+pub function TcpServer.on_error(self: TcpServer, callback)
     if self is not null
         self.on_error_cb = callback
     end

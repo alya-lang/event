@@ -70,24 +70,24 @@ pub function buffer_read_line(buf)
     return [line, 1]
 end
 
-# --- Struct Methods on ByteBuffer ---
+# --- Struct Methods on StreamBuffer ---
 
-pub function ByteBuffer.append(self, chunk)
+pub function StreamBuffer.append(self: StreamBuffer, chunk)
     return buffer_append(self, chunk)
 end
 
-pub function ByteBuffer.to_string(self)
+pub function StreamBuffer.to_string(self: StreamBuffer)
     return buffer_to_string(self)
 end
 
-pub function ByteBuffer.clear(self)
+pub function StreamBuffer.clear(self: StreamBuffer)
     buffer_clear(self)
 end
 
-pub function ByteBuffer.len(self)
+pub function StreamBuffer.len(self: StreamBuffer)
     return buffer_len(self)
 end
 
-pub function ByteBuffer.read_line(self)
+pub function StreamBuffer.read_line(self: StreamBuffer)
     return buffer_read_line(self)
 end

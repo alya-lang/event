@@ -77,8 +77,8 @@ event = { git = "https://github.com/alya-lang/event", branch = "main" }
 Or install it directly using the Alya package CLI:
 
 ```bash
-alyac add event --git https://github.com/alya-lang/event --branch main
-alyac install
+alya add event --git https://github.com/alya-lang/event --branch main
+alya install
 ```
 
 ---
@@ -320,33 +320,33 @@ let line2 = reader.read_line() # -> ["Host: api.alya.org", 1]
 Run the complete automated test suite:
 
 ```bash
-alyac test .
+alya test .
 ```
 
 Or run individual test suites:
 
 ```bash
-alyac run tests/test_basic.alya
-alyac run tests/test_timers.alya
-alyac run tests/test_emitter.alya
-alyac run tests/test_poll.alya
-alyac run tests/test_run.alya
-alyac run tests/test_multiplexer.alya
-alyac run tests/test_reader.alya
-alyac run tests/test_stream.alya
-alyac run tests/test_net.alya
+alya run tests/test_basic.alya
+alya run tests/test_timers.alya
+alya run tests/test_emitter.alya
+alya run tests/test_poll.alya
+alya run tests/test_run.alya
+alya run tests/test_multiplexer.alya
+alya run tests/test_reader.alya
+alya run tests/test_stream.alya
+alya run tests/test_net.alya
 ```
 
 Run the performance micro-benchmarks:
 
 ```bash
-alyac run benches/bench_basic.alya
+alya run benches/bench_basic.alya
 ```
 
 Run the comprehensive feature demonstration:
 
 ```bash
-alyac run examples/demo.alya
+alya run examples/demo.alya
 ```
 
 ---
@@ -358,13 +358,13 @@ Contributions are welcome! Please follow these steps:
 1. Fork the repository and clone it locally
 2. Install dependencies:
    ```bash
-   alyac install
+   alya install
    ```
 3. Create your feature branch (`git checkout -b feature/my-feature`)
 4. Verify tests and formatting before opening a PR:
    ```bash
-   alyac test
-   alyac fmt . --check
+   alya test
+   alya fmt . --check
    ```
 5. Commit your changes (`git commit -m "feat: add feature"`) and open a Pull Request
 

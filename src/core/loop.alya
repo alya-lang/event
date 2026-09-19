@@ -163,6 +163,8 @@ pub function loop_dispatch_event(ev)
         let stream = ev.data
         if ev.event_type == EventType.Read
             tcp_stream_read(stream)
+        elif ev.event_type == EventType.Error
+            tcp_stream_close(stream)
         end
         return 1
     end
@@ -170,6 +172,8 @@ pub function loop_dispatch_event(ev)
         let stream = ev.data
         if ev.event_type == EventType.Write
             tcp_stream_flush(stream)
+        elif ev.event_type == EventType.Error
+            tcp_stream_close(stream)
         end
         return 1
     end
@@ -179,6 +183,8 @@ pub function loop_dispatch_event(ev)
             tcp_stream_read(stream)
         elif ev.event_type == EventType.Write
             tcp_stream_flush(stream)
+        elif ev.event_type == EventType.Error
+            tcp_stream_close(stream)
         end
         return 1
     end

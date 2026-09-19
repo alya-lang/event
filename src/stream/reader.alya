@@ -25,20 +25,20 @@ pub function StreamReader.feed(self, chunk)
     if self is null or chunk is null or len(chunk) == 0
         return 0
     end
-    return self.ring.write(chunk)
+    return ring_write(self.ring, chunk)
 end
 
 # Extracts the next line terminated by \n (with optional \r stripped)
 # Returns [line, has_line (1 or 0)]
 pub function StreamReader.read_line(self)
-    if self is null or self.ring.available() == 0
+    if self is null or ring_available(self.ring) == 0
         return ["", 0]
     end
     let idx = index_of(self.ring.raw, "\n")
     if idx < 0
         return ["", 0]
     end
-    let raw = self.ring.read(idx + 1)
+    let raw = ring_read(self.ring, idx + 1)
     let line = raw[0..idx]
     if len(line) > 0 and line[(len(line) - 1)..len(line)] == "\r"
         line = line[0..(len(line) - 1)]
@@ -49,7 +49,7 @@ end
 # Extracts a framed message payload up to delimiter `delim`
 # Consumes the delimiter and returns [payload, has_message (1 or 0)]
 pub function StreamReader.read_until(self, delim)
-    if self is null or self.ring.available() == 0 or delim is null or len(delim) == 0
+    if self is null or ring_available(self.ring) == 0 or delim is null or len(delim) == 0
         return ["", 0]
     end
     let idx = index_of(self.ring.raw, delim)
@@ -57,17 +57,17 @@ pub function StreamReader.read_until(self, delim)
         return ["", 0]
     end
     let payload = self.ring.raw[0..idx]
-    self.ring.read(idx + len(delim))
+    ring_read(self.ring, idx + len(delim))
     return [payload, 1]
 end
 
 # Extracts a fixed-length payload of exactly n bytes
 # Returns [chunk, has_chunk (1 or 0)]
 pub function StreamReader.read_bytes(self, n)
-    if self is null or n is null or n <= 0 or self.ring.available() < n
+    if self is null or n is null or n <= 0 or ring_available(self.ring) < n
         return ["", 0]
     end
-    let payload = self.ring.read(n)
+    let payload = ring_read(self.ring, n)
     return [payload, 1]
 end
 
@@ -76,7 +76,7 @@ pub function StreamReader.peek(self, n)
     if self is null
         return ""
     end
-    return self.ring.peek(n)
+    return ring_peek(self.ring, n)
 end
 
 # Returns total bytes currently buffered in the reader
@@ -84,13 +84,13 @@ pub function StreamReader.available(self)
     if self is null
         return 0
     end
-    return self.ring.available()
+    return ring_available(self.ring)
 end
 
 # Clears all buffered data from the reader
 pub function StreamReader.clear(self)
     if self is not null
-        self.ring.clear()
+        ring_clear(self.ring)
     end
 end
 
@@ -99,5 +99,39 @@ pub function StreamReader.is_empty(self)
     if self is null
         return 1
     end
-    return self.ring.is_empty()
+    return ring_is_empty(self.ring)
+end
+
+# --- Functional API for StreamReader ---
+
+pub function stream_reader_feed(reader, chunk)
+    return StreamReader.feed(reader, chunk)
+end
+
+pub function stream_reader_read_line(reader)
+    return StreamReader.read_line(reader)
+end
+
+pub function stream_reader_read_until(reader, delim)
+    return StreamReader.read_until(reader, delim)
+end
+
+pub function stream_reader_read_bytes(reader, n)
+    return StreamReader.read_bytes(reader, n)
+end
+
+pub function stream_reader_peek(reader, n)
+    return StreamReader.peek(reader, n)
+end
+
+pub function stream_reader_available(reader)
+    return StreamReader.available(reader)
+end
+
+pub function stream_reader_clear(reader)
+    StreamReader.clear(reader)
+end
+
+pub function stream_reader_is_empty(reader)
+    return StreamReader.is_empty(reader)
 end

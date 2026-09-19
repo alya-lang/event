@@ -53,10 +53,10 @@ pub function tcp_stream_write(stream, data)
     end
 
     # If pending bytes already exist in write buffer, preserve sequential ordering
-    if stream.write_buf.len() > 0
-        stream.write_buf.append(data)
+    if buffer_len(stream.write_buf) > 0
+        buffer_append(stream.write_buf, data)
         stream.loop.watch_write(stream.fd, "tcp_stream_write", stream)
-        if stream.write_buf.len() >= stream.high_water_mark
+        if buffer_len(stream.write_buf) >= stream.high_water_mark
             return 0
         end
         return 1
@@ -66,9 +66,9 @@ pub function tcp_stream_write(stream, data)
     let sent = net::tcp_send(stream.fd, data)
     if sent < 0
         # Would block or socket error: queue into write buffer
-        stream.write_buf.append(data)
+        buffer_append(stream.write_buf, data)
         stream.loop.watch_write(stream.fd, "tcp_stream_write", stream)
-        if stream.write_buf.len() >= stream.high_water_mark
+        if buffer_len(stream.write_buf) >= stream.high_water_mark
             return 0
         end
         return 1
@@ -77,9 +77,9 @@ pub function tcp_stream_write(stream, data)
     if sent < len(data)
         # Partial transmission: buffer the unsent remainder
         let remainder = data[sent..len(data)]
-        stream.write_buf.append(remainder)
+        buffer_append(stream.write_buf, remainder)
         stream.loop.watch_write(stream.fd, "tcp_stream_write", stream)
-        if stream.write_buf.len() >= stream.high_water_mark
+        if buffer_len(stream.write_buf) >= stream.high_water_mark
             return 0
         end
         return 1
@@ -98,7 +98,7 @@ pub function tcp_stream_flush(stream)
     if stream is null or stream.closed == 1
         return 0
     end
-    if stream.write_buf.len() == 0
+    if buffer_len(stream.write_buf) == 0
         # Nothing pending, restore reading mode
         if stream.paused == 1
             stream.loop.unwatch(stream.fd)
@@ -108,11 +108,11 @@ pub function tcp_stream_flush(stream)
         return 1
     end
 
-    let pending = stream.write_buf.to_string()
+    let pending = buffer_to_string(stream.write_buf)
     let sent = net::tcp_send(stream.fd, pending)
     if sent > 0
         if sent >= len(pending)
-            stream.write_buf.clear()
+            buffer_clear(stream.write_buf)
             if stream.paused == 1
                 stream.loop.unwatch(stream.fd)
             else
@@ -126,8 +126,8 @@ pub function tcp_stream_flush(stream)
             return 1
         else
             let remainder = pending[sent..len(pending)]
-            stream.write_buf.clear()
-            stream.write_buf.append(remainder)
+            buffer_clear(stream.write_buf)
+            buffer_append(stream.write_buf, remainder)
             return 0
         end
     end
@@ -154,7 +154,7 @@ pub function tcp_stream_read(stream, max_bytes = 4096)
         return ""
     end
 
-    stream.reader.feed(chunk)
+    stream_reader_feed(stream.reader, chunk)
 
     # 1. Dispatch on_data callback
     let d_cb = stream.on_data_cb
@@ -167,7 +167,7 @@ pub function tcp_stream_read(stream, max_bytes = 4096)
     if l_cb is not null
         let has_more = 1
         while has_more == 1
-            let res = stream.reader.read_line()
+            let res = stream_reader_read_line(stream.reader)
             if res[1] == 1
                 l_cb(stream, res[0])
             else
@@ -189,7 +189,7 @@ pub function tcp_stream_pause(stream)
         return 0
     end
     stream.paused = 1
-    if stream.write_buf.len() > 0
+    if buffer_len(stream.write_buf) > 0
         stream.loop.watch_write(stream.fd, "tcp_stream_write", stream)
     else
         stream.loop.unwatch(stream.fd)
@@ -207,7 +207,7 @@ pub function tcp_stream_resume(stream)
         return 0
     end
     stream.paused = 0
-    if stream.write_buf.len() > 0
+    if buffer_len(stream.write_buf) > 0
         watcher_add(stream.loop, stream.fd, 3, "tcp_stream_rw", stream)
     else
         stream.loop.watch_read(stream.fd, "tcp_stream_read", stream)
@@ -332,5 +332,5 @@ pub function TcpStream.buffered_bytes(self: TcpStream)
     if self is null
         return 0
     end
-    return self.write_buf.len()
+    return buffer_len(self.write_buf)
 end

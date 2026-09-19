@@ -102,3 +102,37 @@ pub function RingBuffer.is_full(self)
     end
     return self.size >= self.capacity
 end
+
+# --- Functional API for RingBuffer ---
+
+pub function ring_write(buf, chunk)
+    return RingBuffer.write(buf, chunk)
+end
+
+pub function ring_read(buf, n)
+    return RingBuffer.read(buf, n)
+end
+
+pub function ring_peek(buf, n)
+    return RingBuffer.peek(buf, n)
+end
+
+pub function ring_clear(buf)
+    RingBuffer.clear(buf)
+end
+
+pub function ring_available(buf)
+    return RingBuffer.available(buf)
+end
+
+pub function ring_free_space(buf)
+    return RingBuffer.free_space(buf)
+end
+
+pub function ring_is_empty(buf)
+    return RingBuffer.is_empty(buf)
+end
+
+pub function ring_is_full(buf)
+    return RingBuffer.is_full(buf)
+end

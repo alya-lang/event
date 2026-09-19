@@ -8,6 +8,7 @@ import "./watcher.alya"
 import "./poller.alya"
 import "../stream/stream.alya"
 import "../net/server.alya"
+import "../fs/async.alya"
 
 # Creates a new initialized EventLoop instance
 # Backed by high-performance OS kernel multiplexer (Lib/uv) with fallback to std/net
@@ -29,7 +30,8 @@ pub function event_loop_new(use_uv = true)
         tick_count: 0,
         stop_requested: 0,
         poller: p,
-        backend: b
+        backend: b,
+        fs_pool: null
     }
 end
 
@@ -56,20 +58,22 @@ pub function loop_is_running(loop)
     end
     let timers = timer_count_active(loop)
     let watchers = watcher_count_active(loop)
-    if (timers + watchers) > 0
+    let fs_pending = fs_pool_pending_count(loop)
+    if (timers + watchers + fs_pending) > 0
         return 1
     end
     return 0
 end
 
-# Returns the total count of active handles (timers + I/O watchers)
+# Returns the total count of active handles (timers + I/O watchers + async fs tasks)
 pub function loop_active_count(loop)
     if loop is null
         return 0
     end
     let t = timer_count_active(loop)
     let w = watcher_count_active(loop)
-    return t + w
+    let f = fs_pool_pending_count(loop)
+    return t + w + f
 end
 
 # Resets all state in the loop
@@ -78,6 +82,10 @@ pub function loop_reset(loop)
         if loop.poller is not null
             loop.poller.close()
             loop.poller = uv::poller(64, 64)
+        end
+        if loop.fs_pool is not null
+            fs_pool_free(loop.fs_pool)
+            loop.fs_pool = null
         end
         loop.timers = []
         loop.watchers = []
@@ -91,6 +99,7 @@ end
 # 1. Calculate dynamic timeout based on closest timer
 # 2. Poll socket I/O watchers via kernel multiplexer (or fallback)
 # 3. Collect expired timers
+# 4. Poll completed offloaded filesystem tasks from worker thread pool
 # Returns an array of EventNotification records triggered in this tick
 pub function loop_tick(loop, max_wait_ms = 100)
     if loop is null
@@ -105,6 +114,10 @@ pub function loop_tick(loop, max_wait_ms = 100)
 
     # 1. Dynamic sleep limit: do not sleep longer than the next pending timer
     let wait_ms = timer_nearest_wait_ms(loop, max_wait_ms)
+    let fs_pending = fs_pool_pending_count(loop)
+    if fs_pending > 0 and wait_ms > 10
+        wait_ms = 10
+    end
 
     # 2. I/O Polling Phase
     let io_events = poller_poll_watchers(loop, wait_ms)
@@ -112,12 +125,18 @@ pub function loop_tick(loop, max_wait_ms = 100)
     # 3. Timers Phase
     let timer_events = timer_collect_expired(loop)
 
-    # 4. Merge notifications
+    # 4. Async Filesystem Phase
+    let fs_events = fs_pool_poll_completed(loop)
+
+    # 5. Merge notifications
     let all_events = []
     for ev in io_events
         push(all_events, ev)
     end
     for ev in timer_events
+        push(all_events, ev)
+    end
+    for ev in fs_events
         push(all_events, ev)
     end
 
@@ -171,6 +190,18 @@ pub function loop_dispatch_event(ev)
     if tag == "writable"
         let cb = ev.data
         cb(ev.fd)
+        return 1
+    end
+    if tag == "fs_async"
+        let task = ev.data
+        let cb = task.on_complete
+        if cb is not null
+            if task.op == "read"
+                cb(task.result_error, task.result_data)
+            elif task.op == "write"
+                cb(task.result_error, task.bytes_processed)
+            end
+        end
         return 1
     end
     if tag == "callback" or tag == "timeout" or tag == "interval"
@@ -239,6 +270,10 @@ pub function loop_free(loop)
         if loop.poller is not null
             loop.poller.close()
             loop.poller = null
+        end
+        if loop.fs_pool is not null
+            fs_pool_free(loop.fs_pool)
+            loop.fs_pool = null
         end
         loop.timers = []
         loop.watchers = []
@@ -354,4 +389,20 @@ end
 
 pub function EventLoop.dispatch(self, ev)
     return loop_dispatch_event(ev)
+end
+
+pub function EventLoop.fs_read(self, path, on_complete)
+    return fs_read_async(self, path, on_complete)
+end
+
+pub function EventLoop.fs_write(self, path, data, on_complete = null)
+    return fs_write_async(self, path, data, on_complete)
+end
+
+pub function EventLoop.read_file(self, path, on_complete)
+    return fs_read_async(self, path, on_complete)
+end
+
+pub function EventLoop.write_file(self, path, data, on_complete = null)
+    return fs_write_async(self, path, data, on_complete)
 end

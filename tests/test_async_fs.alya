@@ -1,0 +1,142 @@
+# Asynchronous Disk I/O and Thread Pool Test Suite
+# Tests Phase 5 of EVENT_UV_ROADMAP.md and spec/ROADMAP.md Madde 4.5
+
+import "std/test"
+import "std/fs"
+import "../src/lib.alya" as ev
+
+# Test state variables
+let write_done = 0
+let write_bytes = 0
+let write_err = null
+
+let read_done = 0
+let read_content = ""
+let read_err = null
+
+let err_done = 0
+let err_msg = null
+
+let multi_1_done = 0
+let multi_2_done = 0
+let timer_fired = 0
+
+function on_write_1(err, bytes)
+    write_done = 1
+    write_err = err
+    write_bytes = bytes
+end
+
+function on_read_1(err, content)
+    read_done = 1
+    read_err = err
+    read_content = content
+end
+
+function on_read_err(err, content)
+    err_done = 1
+    err_msg = err
+end
+
+function on_multi_1(err, bytes)
+    multi_1_done = 1
+end
+
+function on_multi_2(err, content)
+    multi_2_done = 1
+end
+
+function on_timer(event)
+    timer_fired = 1
+end
+
+function main()
+    test_suite("event Package Phase 5 Async Disk I/O Test Suite")
+    let r = runner_new()
+
+    let test_file_1 = "test_async_fs_temp_1.txt"
+    let test_file_2 = "test_async_fs_temp_2.txt"
+    let non_existent = "test_non_existent_file_99999.xyz"
+
+    # Clean up any leftover artifacts
+    if file_exists(test_file_1) == 1
+        remove_file(test_file_1)
+    end
+    if file_exists(test_file_2) == 1
+        remove_file(test_file_2)
+    end
+
+    let loop = ev::loop()
+    runner_assert(r, loop is not null, "loop should not be null")
+
+    # 1. Test async file write
+    write_done = 0
+    write_bytes = 0
+    write_err = null
+
+    ev::fs_write_async(loop, test_file_1, "Hello from Alya Async I/O Thread Pool!", on_write_1)
+    runner_assert_eq(r, loop.active_count(), 1, "loop active count should reflect 1 in-flight fs task")
+
+    # Run loop to process the write
+    loop.run()
+
+    runner_assert_eq(r, write_done, 1, "async write callback should have executed")
+    runner_assert(r, write_err is null, "async write should succeed without error")
+    runner_assert(r, write_bytes > 0, "written bytes should be > 0")
+    runner_assert_eq(r, file_exists(test_file_1), 1, "target file should exist on disk")
+
+    # 2. Test async file read
+    read_done = 0
+    read_content = ""
+    read_err = null
+
+    ev::fs_read_async(loop, test_file_1, on_read_1)
+    loop.run()
+
+    runner_assert_eq(r, read_done, 1, "async read callback should have executed")
+    runner_assert(r, read_err is null, "async read should succeed without error")
+    runner_assert_eq(r, read_content, "Hello from Alya Async I/O Thread Pool!", "read content must match written payload")
+
+    # 3. Test async file read on non-existent file
+    err_done = 0
+    err_msg = null
+
+    ev::fs_read_async(loop, non_existent, on_read_err)
+    loop.run()
+
+    runner_assert_eq(r, err_done, 1, "error callback should execute")
+    runner_assert(r, err_msg is not null, "error message should be returned for missing file")
+
+    # 4. Test struct methods and concurrent multi-file async operations
+    multi_1_done = 0
+    multi_2_done = 0
+    timer_fired = 0
+
+    loop.fs_write(test_file_2, "Concurrent Async Task Payload 2", on_multi_1)
+    loop.fs_read(test_file_1, on_multi_2)
+
+    # Concurrently fire a timer during async I/O
+    loop.timeout(10, "concurrent_timer", on_timer)
+
+    runner_assert(r, loop.active_count() >= 2, "multiple tasks and timer active")
+
+    loop.run()
+
+    runner_assert_eq(r, multi_1_done, 1, "multi_1 async task should complete")
+    runner_assert_eq(r, multi_2_done, 1, "multi_2 async task should complete")
+    runner_assert_eq(r, timer_fired, 1, "timer should fire concurrently with async disk I/O")
+
+    # Verify content of test_file_2
+    let file2_content = read_file(test_file_2)
+    runner_assert_eq(r, file2_content, "Concurrent Async Task Payload 2", "file 2 content must match")
+
+    # Clean up test files
+    remove_file(test_file_1)
+    remove_file(test_file_2)
+
+    # 5. Clean loop free
+    loop.free()
+    runner_assert_eq(r, loop.active_count(), 0, "active count should be 0 after free")
+
+    runner_summary(r)
+end

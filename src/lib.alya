@@ -14,6 +14,7 @@ import "./stream/reader.alya"
 import "./stream/stream.alya"
 import "./net/server.alya"
 import "./net/client.alya"
+import "./fs/async.alya"
 
 # --- Convenience Aliases ---
 
@@ -119,4 +120,26 @@ end
 # Convenience dispatcher for event notifications
 pub function dispatch(ev)
     return loop_dispatch_event(ev)
+end
+
+# --- Phase 5: Async Filesystem Operations ---
+
+# Convenience alias for async file read
+pub function read_async(loop, path, on_complete)
+    return fs_read_async(loop, path, on_complete)
+end
+
+# Convenience alias for async file write
+pub function write_async(loop, path, data, on_complete = null)
+    return fs_write_async(loop, path, data, on_complete)
+end
+
+# Convenience alias for async file read
+pub function read_file_async(loop, path, on_complete)
+    return fs_read_async(loop, path, on_complete)
+end
+
+# Convenience alias for async file write
+pub function write_file_async(loop, path, data, on_complete = null)
+    return fs_write_async(loop, path, data, on_complete)
 end

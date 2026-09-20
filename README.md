@@ -85,32 +85,34 @@ alya install
 
 ## 🚀 Quick Start
 
-### 1. High-Resolution Timers & Intervals
-
 ```alya
 import "event" as ev
 
-let loop = ev::loop()
+function main()
+    let loop = ev::loop()
 
-# Schedule a one-shot timeout (fires after 100ms)
-ev::set_timeout(loop, 100, "cache_flush", null)
+    # Schedule a one-shot timeout (fires after 100ms)
+    ev::set_timeout(loop, 100, "cache_flush", null)
 
-# Schedule a recurring interval (fires every 50ms)
-let interval_id = ev::set_interval(loop, 50, "heartbeat", 42)
+    # Schedule a recurring interval (fires every 50ms)
+    let interval_id = ev::set_interval(loop, 50, "heartbeat", 42)
 
-# Poll the event loop
-while ev::loop_is_running(loop)
-    let events = ev::loop_tick(loop, 50)
-    let i = 0
-    while i < len(events)
-        let e = events[i]
-        say "Fired event tag=" + e.tag + " type=" + ev::event_type_name(e.event_type)
-        i += 1
+    # Poll the event loop
+    while ev::loop_is_running(loop)
+        let events = ev::loop_tick(loop, 50)
+        let i = 0
+        while i < len(events)
+            let e = events[i]
+            say "Fired event tag=" + e.tag + " type=" + ev::event_type_name(e.event_type)
+            i += 1
+        end
     end
 end
+
+main()
 ```
 
-### 2. Non-Blocking TCP Socket Demultiplexing
+### Non-Blocking TCP Socket Demultiplexing
 
 ```alya
 import "std/net"
@@ -137,7 +139,7 @@ while i < len(events)
 end
 ```
 
-### 3. Decoupled EventEmitter (Pub/Sub)
+### Decoupled EventEmitter (Pub/Sub)
 
 ```alya
 import "event" as ev
@@ -153,7 +155,7 @@ let triggered = ev::emitter_emit(em, "order_created", {"order_id": 1001})
 # -> Dispatches to "send_notification" and "first_purchase_gift"
 ```
 
-### 4. High-Level Event-Driven TcpServer & TcpClient
+### High-Level Event-Driven TcpServer & TcpClient
 
 ```alya
 import "event" as ev
@@ -179,7 +181,7 @@ ev::stream_write(client, "Hello World\n")
 loop.run()
 ```
 
-### 5. StreamReader & RingBuffer Message Framing
+### StreamReader & RingBuffer Message Framing
 
 ```alya
 import "event" as ev
@@ -347,6 +349,18 @@ Run the comprehensive feature demonstration:
 
 ```bash
 alya run examples/demo.alya
+```
+
+Check code formatting:
+
+```bash
+alya fmt . --check
+```
+
+Run static code linter:
+
+```bash
+alya lint . --check
 ```
 
 ---

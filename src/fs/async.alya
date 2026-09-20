@@ -1,10 +1,12 @@
-# Asynchronous Offloaded File System and Worker Thread Pool for EventLoop
-# Part of the Alya Language package ecosystem (https://github.com/alya-lang)
+## # event/fs/async
+##
+## Asynchronous offloaded file system and worker thread pool for EventLoop.
+## Part of the Alya Language package ecosystem (https://github.com/alya-lang).
 
 import "std/sync"
 import "../types.alya"
 
-# Represents a single queued or in-flight async filesystem task
+## Represents a single queued or in-flight async filesystem task.
 pub struct FsTask
     id,
     op,

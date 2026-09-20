@@ -9,8 +9,8 @@ function main()
 
     # 1. loop.run() with timeouts completing naturally
     let l = ev::loop()
-    let t1 = l.timeout(10, "timeout_1", 100)
-    let t2 = l.timeout(25, "timeout_2", 200)
+    let _t1 = l.timeout(10, "timeout_1", 100)
+    let _t2 = l.timeout(25, "timeout_2", 200)
     runner_assert_eq(r, l.active_count(), 2, "initial active count should be 2")
     runner_assert_eq(r, l.is_running(), 1, "loop should report active handles")
 
@@ -21,7 +21,7 @@ function main()
 
     # 2. loop.stop() called during an interval
     let l2 = ev::loop()
-    let t_int = l2.interval(5, "heartbeat", null)
+    let _t_int = l2.interval(5, "heartbeat", null)
 
     # Allow interval to elapse
     sleep(15)

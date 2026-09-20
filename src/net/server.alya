@@ -1,13 +1,15 @@
-# Event-Driven TCP Server
-# Part of the Alya Language package ecosystem (https://github.com/alya-lang)
+## # event/net/server
+##
+## Event-driven non-blocking TCP server.
+## Part of the Alya Language package ecosystem (https://github.com/alya-lang).
 
 import "std/net" as net
 import "../types.alya"
 import "../stream/stream.alya"
 
-# Creates and binds an event-driven TCP server to the specified host and port.
-# Incoming client connections are automatically wrapped in TcpStream instances
-# and dispatched to on_connect(server, client_stream).
+## Creates and binds an event-driven TCP server to the specified host and port.
+## Incoming client connections are automatically wrapped in TcpStream instances
+## and dispatched to on_connect(server, client_stream).
 pub function tcp_server_listen(loop, host, port, on_connect, on_error = null, backlog = 128)
     if loop is null or port is null or port <= 0
         return null

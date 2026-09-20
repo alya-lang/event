@@ -85,9 +85,9 @@ end
 function demo_emitter()
     say "\n4. EventEmitter (Publish/Subscribe)..."
     let em = ev::emitter()
-    let l1 = ev::emitter_on(em, "payment_received", "send_receipt_email")
-    let l2 = ev::emitter_on(em, "payment_received", "notify_warehouse")
-    let l3 = ev::emitter_once(em, "payment_received", "first_time_buyer_discount")
+    let _l1 = ev::emitter_on(em, "payment_received", "send_receipt_email")
+    let _l2 = ev::emitter_on(em, "payment_received", "notify_warehouse")
+    let _l3 = ev::emitter_once(em, "payment_received", "first_time_buyer_discount")
 
     say "   Active listeners count: " + str(ev::emitter_listener_count(em, "payment_received"))
     say "   Emitting 'payment_received' event..."

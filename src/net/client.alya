@@ -1,12 +1,23 @@
-# Non-Blocking TCP Client Connection
-# Part of the Alya Language package ecosystem (https://github.com/alya-lang)
+## # event/net/client
+##
+## Non-blocking TCP client connection initiator.
+## Part of the Alya Language package ecosystem (https://github.com/alya-lang).
 
 import "std/net" as net
-import "../types.alya"
 import "../stream/stream.alya"
 
-# Initiates a non-blocking TCP client connection to a remote host:port.
-# Returns a TcpStream instance, and invokes on_connect(stream) once connection handle is established.
+## Initiates a non-blocking TCP client connection to a remote host:port.
+## Returns a TcpStream instance, and invokes on_connect(stream) once connection handle is established.
+##
+## ### Parameters
+## - `loop`: Target `EventLoop`.
+## - `host`: Destination hostname or IP string.
+## - `port`: Destination port number.
+## - `on_connect`: Optional connection success callback.
+## - `on_error`: Optional connection error callback.
+##
+## ### Returns
+## Initialized `TcpStream` instance or `null` on immediate failure.
 pub function tcp_client_connect(loop, host, port, on_connect = null, on_error = null)
     if loop is null or host is null or port is null or port <= 0
         if on_error is not null

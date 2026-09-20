@@ -1,10 +1,12 @@
-# Socket I/O Watcher Registry for EventLoop
-# Part of the Alya Language package ecosystem (https://github.com/alya-lang)
+## # event/core/watcher
+##
+## Socket I/O watcher registry for EventLoop.
+## Part of the Alya Language package ecosystem (https://github.com/alya-lang).
 
 import "../types.alya"
 
-# Registers an I/O watcher for socket `fd`
-# `events`: 1 (READ), 2 (WRITE), or 3 (READ | WRITE)
+## Registers an I/O watcher for socket `fd`.
+## `events`: 1 (READ), 2 (WRITE), or 3 (READ | WRITE).
 pub function watcher_add(loop, fd, events = 1, tag = "", data = null)
     if loop is null or fd is null or fd < 0
         return -1
@@ -72,8 +74,8 @@ pub function watcher_count_active(loop)
     return active_count
 end
 
-# Finds an active watcher by socket descriptor
-pub function watcher_find(loop, fd) -> IoWatcher
+## Finds an active watcher by socket descriptor.
+pub function watcher_find(loop, fd)
     if loop is null or fd is null
         return null
     end
@@ -85,8 +87,8 @@ pub function watcher_find(loop, fd) -> IoWatcher
     return null
 end
 
-# Finds an active watcher by unique watcher ID
-pub function watcher_find_by_id(loop, wid) -> IoWatcher
+## Finds an active watcher by unique watcher ID.
+pub function watcher_find_by_id(loop, wid)
     if loop is null or wid is null
         return null
     end

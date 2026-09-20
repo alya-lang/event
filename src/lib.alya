@@ -1,7 +1,11 @@
-# event - High-Concurrency Reactor Event Loop, Timers, and I/O Multiplexer
-# Part of the Alya Language package ecosystem (https://github.com/alya-lang)
+## # event
+##
+## High-concurrency reactor event loop, timers, streams, and I/O multiplexer for Alya.
+## Part of the Alya Language package ecosystem (https://github.com/alya-lang).
+##
+## Provides cooperative single-threaded asynchronous I/O, timers, socket streams,
+## TCP servers and clients, buffered stream readers, event emitters, and async filesystem operations.
 
-import "uv" as uv
 import "./types.alya"
 import "./core/loop.alya"
 import "./core/timer.alya"
@@ -16,130 +20,176 @@ import "./net/server.alya"
 import "./net/client.alya"
 import "./fs/async.alya"
 
-# --- Convenience Aliases ---
+# ═══════════════════════════════════════════════════════════════
+# EventLoop Factory & Control
+# ═══════════════════════════════════════════════════════════════
 
-# Factory alias for EventLoop
+## Creates a new EventLoop instance.
+##
+## ### Parameters
+## - `use_uv`: `true` to enable native OS kernel multiplexer (Lib/uv), `false` for fallback.
+##
+## ### Returns
+## Initialized `EventLoop` instance.
 pub function loop(use_uv = true)
     return event_loop_new(use_uv)
 end
 
+## Creates a new EventLoop instance (alias for `loop`).
 pub function loop_new(use_uv = true)
     return event_loop_new(use_uv)
 end
 
-# Factory alias for EventEmitter
-pub function emitter()
-    return event_emitter_new()
-end
-
-# Factory alias for ByteBuffer
-pub function buffer()
-    return byte_buffer_new()
-end
-
-# Convenience alias for querying loop active backend
+## Returns the active kernel backend name ("WSAPoll", "epoll", "kqueue", or "fallback").
 pub function backend(loop)
     return loop_backend(loop)
 end
 
-# Convenience alias for adding a timeout
+## Polls registered active socket watchers for I/O readiness within wait_ms.
+pub function poll(loop, wait_ms = 0)
+    return poller_poll_watchers(loop, wait_ms)
+end
+
+# ═══════════════════════════════════════════════════════════════
+# Timer Operations
+# ═══════════════════════════════════════════════════════════════
+
+## Registers a one-shot timeout timer.
+##
+## ### Parameters
+## - `loop`: Target `EventLoop`.
+## - `delay_ms`: Delay duration in milliseconds.
+## - `tag`: Optional tag identifier.
+## - `data`: Optional attached payload or callback.
+##
+## ### Returns
+## Integer timer identifier.
 pub function set_timeout(loop, delay_ms, tag = "", data = null)
     return timer_add_timeout(loop, delay_ms, tag, data)
 end
 
-# Convenience alias for adding an interval
+## Registers a periodic interval timer.
+##
+## ### Parameters
+## - `loop`: Target `EventLoop`.
+## - `interval_ms`: Periodic duration in milliseconds.
+## - `tag`: Optional tag identifier.
+## - `data`: Optional attached payload or callback.
+##
+## ### Returns
+## Integer timer identifier.
 pub function set_interval(loop, interval_ms, tag = "", data = null)
     return timer_add_interval(loop, interval_ms, tag, data)
 end
 
-# Convenience alias for clearing a timer
+## Cancels an active timer by its identifier.
 pub function clear_timer(loop, timer_id)
     return timer_cancel(loop, timer_id)
 end
 
-# Convenience alias for watching a socket for readable incoming data
+# ═══════════════════════════════════════════════════════════════
+# Socket Watcher Operations
+# ═══════════════════════════════════════════════════════════════
+
+## Registers socket descriptor for readable incoming data events.
 pub function watch_read(loop, fd, tag = "", data = null)
     return watcher_add(loop, fd, 1, tag, data)
 end
 
-# Convenience alias for watching a socket for writable readiness
+## Registers socket descriptor for writable readiness events.
 pub function watch_write(loop, fd, tag = "", data = null)
     return watcher_add(loop, fd, 2, tag, data)
 end
 
-# Convenience alias for unwatching a socket
+## Deregisters an active socket watcher.
 pub function unwatch(loop, fd)
     return watcher_remove(loop, fd)
 end
 
-# Convenience alias matching Phase 1 spec for readable watch
+## Alias for `watch_read`.
 pub function watch_readable(loop, fd, tag = "", data = null)
     return watcher_add(loop, fd, 1, tag, data)
 end
 
-# Convenience alias matching Phase 1 spec for writable watch
+## Alias for `watch_write`.
 pub function watch_writable(loop, fd, tag = "", data = null)
     return watcher_add(loop, fd, 2, tag, data)
 end
 
-# Convenience alias for watching an OS process signal
+## Registers an OS process signal watcher.
 pub function watch_signal(loop, signum, tag = "signal", data = null)
     return loop_watch_signal(loop, signum, tag, data)
 end
 
-# Convenience alias for unwatching an OS process signal
+## Deregisters an OS process signal watcher.
 pub function unwatch_signal(loop, signum)
     return loop_unwatch_signal(loop, signum)
 end
 
-# Factory alias for RingBuffer
+# ═══════════════════════════════════════════════════════════════
+# Buffers, Streams & Networking
+# ═══════════════════════════════════════════════════════════════
+
+## Creates an empty StreamBuffer.
+pub function buffer()
+    return byte_buffer_new()
+end
+
+## Creates a new EventEmitter instance.
+pub function emitter()
+    return event_emitter_new()
+end
+
+## Creates a new circular RingBuffer instance.
 pub function ring(capacity = 65536)
     return ring_buffer_new(capacity)
 end
 
-# Factory alias for StreamReader
+## Creates a frame-delimited StreamReader wrapping a stream ring buffer.
 pub function reader(delimiter = "\n", max_frame_size = 1048576, capacity = 65536)
     return stream_reader_new(delimiter, max_frame_size, capacity)
 end
 
-# Factory alias for TcpStream
+## Creates a high-level non-blocking TcpStream wrapping a socket handle.
 pub function stream(loop, fd, high_water_mark = 65536)
     return tcp_stream_new(loop, fd, high_water_mark)
 end
 
-# Factory alias for TcpServer
+## Starts listening on host:port and dispatches incoming TCP connections.
 pub function server(loop, host, port, on_connect, on_error = null, backlog = 128)
     return tcp_server_listen(loop, host, port, on_connect, on_error, backlog)
 end
 
-# Factory alias for TcpClient
+## Connects asynchronously to a remote TCP host:port.
 pub function client(loop, host, port, on_connect = null, on_error = null)
     return tcp_client_connect(loop, host, port, on_connect, on_error)
 end
 
-# Convenience dispatcher for event notifications
+## Dispatches an event notification to its registered handler.
 pub function dispatch(ev)
     return loop_dispatch_event(ev)
 end
 
-# --- Phase 5: Async Filesystem Operations ---
+# ═══════════════════════════════════════════════════════════════
+# Asynchronous Filesystem Operations
+# ═══════════════════════════════════════════════════════════════
 
-# Convenience alias for async file read
+## Reads a file asynchronously off the main reactor loop.
 pub function read_async(loop, path, on_complete)
     return fs_read_async(loop, path, on_complete)
 end
 
-# Convenience alias for async file write
+## Writes data to a file asynchronously off the main reactor loop.
 pub function write_async(loop, path, data, on_complete = null)
     return fs_write_async(loop, path, data, on_complete)
 end
 
-# Convenience alias for async file read
+## Alias for `read_async`.
 pub function read_file_async(loop, path, on_complete)
     return fs_read_async(loop, path, on_complete)
 end
 
-# Convenience alias for async file write
+## Alias for `write_async`.
 pub function write_file_async(loop, path, data, on_complete = null)
     return fs_write_async(loop, path, data, on_complete)
 end

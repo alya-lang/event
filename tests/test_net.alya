@@ -1,6 +1,5 @@
 # End-to-End Test Suite for TcpServer and TcpClient abstractions
 import "std/test"
-import "../src/types.alya"
 import "../src/lib.alya" as ev
 
 struct NetTestContext

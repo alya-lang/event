@@ -1,9 +1,11 @@
-# Non-Blocking Stream Byte Buffer
-# Part of the Alya Language package ecosystem (https://github.com/alya-lang)
+## # event/stream/buffer
+##
+## Non-blocking stream byte buffer.
+## Part of the Alya Language package ecosystem (https://github.com/alya-lang).
 
 import "../types.alya"
 
-# Appends incoming data chunk into the byte buffer
+## Appends incoming data chunk into the byte buffer.
 pub function buffer_append(buf, chunk)
     if buf is null or chunk is null or len(chunk) == 0
         return 0

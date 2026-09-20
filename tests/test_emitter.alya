@@ -11,8 +11,8 @@ function main()
     runner_assert_eq(r, ev::emitter_listener_count(em, "user_login"), 0, "initial listeners should be 0")
 
     # 1. Register persistent listeners
-    let l1 = ev::emitter_on(em, "user_login", "audit_logger")
-    let l2 = ev::emitter_on(em, "user_login", "welcome_emailer")
+    let _l1 = ev::emitter_on(em, "user_login", "audit_logger")
+    let _l2 = ev::emitter_on(em, "user_login", "welcome_emailer")
     runner_assert_eq(r, ev::emitter_listener_count(em, "user_login"), 2, "listeners should be 2")
 
     # Emit event
@@ -23,7 +23,7 @@ function main()
     runner_assert_eq(r, ev::emitter_listener_count(em, "user_login"), 2, "persistent listeners should remain active")
 
     # 2. Register once listener
-    let l_once = ev::emitter_once(em, "app_init", "setup_db")
+    let _l_once = ev::emitter_once(em, "app_init", "setup_db")
     runner_assert_eq(r, ev::emitter_listener_count(em, "app_init"), 1, "app_init should have 1 listener")
 
     let trig_once_1 = ev::emitter_emit(em, "app_init", null)

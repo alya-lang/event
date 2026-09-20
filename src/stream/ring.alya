@@ -1,9 +1,11 @@
-# Circular Ring Buffer for Stream Data Assembly
-# Part of the Alya Language package ecosystem (https://github.com/alya-lang)
+## # event/stream/ring
+##
+## Circular ring buffer for stream data assembly.
+## Part of the Alya Language package ecosystem (https://github.com/alya-lang).
 
 import "../types.alya"
 
-# Constructs a new RingBuffer instance with the given byte capacity
+## Constructs a new RingBuffer instance with the given byte capacity.
 pub function ring_buffer_new(capacity = 65536)
     if capacity is null or capacity <= 0
         capacity = 65536

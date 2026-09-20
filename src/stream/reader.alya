@@ -1,11 +1,13 @@
-# Buffered Stream Reader & Framing Abstraction
-# Part of the Alya Language package ecosystem (https://github.com/alya-lang)
+## # event/stream/reader
+##
+## Buffered stream reader and framing abstraction.
+## Part of the Alya Language package ecosystem (https://github.com/alya-lang).
 
 import "std/str"
 import "../types.alya"
 import "./ring.alya"
 
-# Constructs a new StreamReader instance
+## Constructs a new StreamReader instance.
 pub function stream_reader_new(delimiter = "\n", max_frame_size = 1048576, capacity = 65536)
     if delimiter is null or len(delimiter) == 0
         delimiter = "\n"

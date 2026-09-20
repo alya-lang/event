@@ -33,20 +33,20 @@ function on_read_1(err, content)
     read_content = content
 end
 
-function on_read_err(err, content)
+function on_read_err(err, _content)
     err_done = 1
     err_msg = err
 end
 
-function on_multi_1(err, bytes)
+function on_multi_1(_err, _bytes)
     multi_1_done = 1
 end
 
-function on_multi_2(err, content)
+function on_multi_2(_err, _content)
     multi_2_done = 1
 end
 
-function on_timer(event)
+function on_timer(_event)
     timer_fired = 1
 end
 

@@ -1,5 +1,7 @@
-# High-Level TCP Stream with Flow Control & Backpressure
-# Part of the Alya Language package ecosystem (https://github.com/alya-lang)
+## # event/stream/stream
+##
+## High-level TCP stream with flow control and backpressure.
+## Part of the Alya Language package ecosystem (https://github.com/alya-lang).
 
 import "std/net" as net
 import "../types.alya"
@@ -7,7 +9,7 @@ import "./buffer.alya"
 import "./reader.alya"
 import "../core/watcher.alya"
 
-# Constructs and initializes a new TcpStream over socket descriptor fd
+## Constructs and initializes a new TcpStream over socket descriptor fd.
 pub function tcp_stream_new(loop, fd, high_water_mark = 65536)
     if loop is null or fd is null or fd < 0
         return null

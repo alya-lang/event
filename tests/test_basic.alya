@@ -95,6 +95,16 @@ function main()
     em.clear("test_event")
     runner_assert_eq(r, em.listener_count("test_event"), 0, "em.clear works")
 
+    # 7. WatchEvent and LoopBackend enums
+    runner_assert_eq(r, ev::WatchEvent.Readable, 1, "WatchEvent.Readable should be 1")
+    runner_assert_eq(r, ev::WatchEvent.Writable, 2, "WatchEvent.Writable should be 2")
+    runner_assert_eq(r, ev::WatchEvent.Both, 3, "WatchEvent.Both should be 3")
+    runner_assert_eq(r, ev::LoopBackend.Auto, 0, "LoopBackend.Auto should be 0")
+    runner_assert_eq(r, ev::LoopBackend.WsaPoll, 1, "LoopBackend.WsaPoll should be 1")
+    runner_assert_eq(r, ev::LoopBackend.Epoll, 2, "LoopBackend.Epoll should be 2")
+    runner_assert_eq(r, ev::LoopBackend.Kqueue, 3, "LoopBackend.Kqueue should be 3")
+    runner_assert_eq(r, ev::LoopBackend.Fallback, 4, "LoopBackend.Fallback should be 4")
+
     runner_summary(r)
 end
 

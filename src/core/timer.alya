@@ -1,10 +1,12 @@
-# Timer Management and Scheduling for EventLoop
-# Part of the Alya Language package ecosystem (https://github.com/alya-lang)
+## # event/core/timer
+##
+## Timer management and scheduling for EventLoop.
+## Part of the Alya Language package ecosystem (https://github.com/alya-lang).
 
 import "../types.alya"
 
-# Registers a one-shot timeout in the loop
-# Returns the assigned timer ID (integer >= 1)
+## Registers a one-shot timeout in the loop.
+## Returns the assigned timer ID (integer >= 1).
 pub function timer_add_timeout(loop, delay_ms, tag = "", data = null)
     if loop is null
         return -1

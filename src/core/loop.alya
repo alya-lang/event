@@ -1,5 +1,10 @@
-# Core EventLoop Engine
-# Part of the Alya Language package ecosystem (https://github.com/alya-lang)
+## # event/core/loop
+##
+## Core reactor event loop engine for Alya.
+## Part of the Alya Language package ecosystem (https://github.com/alya-lang).
+##
+## Provides single-threaded cooperative event dispatching, timers, I/O watchers,
+## and integration with native kernel multiplexers.
 
 import "uv" as uv
 import "../types.alya"
@@ -10,8 +15,8 @@ import "../stream/stream.alya"
 import "../net/server.alya"
 import "../fs/async.alya"
 
-# Creates a new initialized EventLoop instance
-# Backed by high-performance OS kernel multiplexer (Lib/uv) with fallback to std/net
+## Creates a new initialized EventLoop instance.
+## Backed by high-performance OS kernel multiplexer (Lib/uv) with fallback to std/net.
 pub function event_loop_new(use_uv = true)
     let p = null
     let b = "fallback"
@@ -179,12 +184,13 @@ pub function loop_dispatch_event(ev)
     end
     if tag == "tcp_stream_rw"
         let stream = ev.data
-        if ev.event_type == EventType.Read
-            tcp_stream_read(stream)
-        elif ev.event_type == EventType.Write
-            tcp_stream_flush(stream)
-        elif ev.event_type == EventType.Error
-            tcp_stream_close(stream)
+        when ev.event_type
+            is EventType.Read then
+                tcp_stream_read(stream)
+            is EventType.Write then
+                tcp_stream_flush(stream)
+            is EventType.Error then
+                tcp_stream_close(stream)
         end
         return 1
     end

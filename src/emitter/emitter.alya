@@ -1,9 +1,13 @@
-# Event Emitter (Publish-Subscribe Pattern)
-# Part of the Alya Language package ecosystem (https://github.com/alya-lang)
+## # event/emitter
+##
+## Publish-Subscribe Event Emitter pattern implementation.
+## Part of the Alya Language package ecosystem (https://github.com/alya-lang).
+##
+## Allows registering persistent and one-time listeners with routing tags.
 
 import "../types.alya"
 
-# Creates a new EventEmitter instance
+## Creates a new EventEmitter instance.
 pub function emitter_new()
     return event_emitter_new()
 end
@@ -93,9 +97,9 @@ pub function emitter_listener_count(em, event_name)
     return active_count
 end
 
-# Emits an event with payload data to all registered listeners
-# Returns an array of triggered listener tags (and auto-removes any `once` listeners)
-pub function emitter_emit(em, event_name, data = null)
+## Emits an event with payload data to all registered listeners.
+## Returns an array of triggered listener tags (and auto-removes any `once` listeners).
+pub function emitter_emit(em, event_name, _data = null)
     if em is null or event_name is null or event_name not in em.listeners
         return []
     end

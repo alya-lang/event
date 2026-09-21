@@ -12,3 +12,7 @@ keywords = ["alya", "alya-lang", "package", "event", "event-loop", "reactor", "c
 
 [dependencies]
 uv = { git = "https://github.com/alya-lang/uv", tag = "v0.1.0" }
+
+# [lint]
+# disabled_rules = []
+# exclude = []

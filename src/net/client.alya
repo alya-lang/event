@@ -18,7 +18,7 @@ import "../stream/stream.alya"
 ##
 ## ### Returns
 ## Initialized `TcpStream` instance or `null` on immediate failure.
-pub function tcp_client_connect(loop, host, port, on_connect = null, on_error = null)
+pub function tcp_client_connect(loop, host: string, port: int, on_connect = null, on_error = null)
     if loop is null or host is null or port is null or port <= 0
         if on_error is not null
             on_error(null, "Invalid arguments provided to tcp_client_connect")

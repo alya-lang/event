@@ -20,8 +20,8 @@ pub struct FsTask
     success
 end
 
-# Constructs an FsTask instance
-pub function fs_task_new(id, op, path, data = null, on_complete = null)
+## Constructs an FsTask instance
+pub function fs_task_new(id, op: string, path: string, data = null, on_complete = null)
     return FsTask {
         id: id,
         op: op,
@@ -97,8 +97,8 @@ pub struct FsThreadPool
     next_task_id
 end
 
-# Creates a new initialized FsThreadPool with the specified number of worker threads
-pub function fs_pool_new(worker_count = 2)
+## Creates a new initialized FsThreadPool with the specified number of worker threads
+pub function fs_pool_new(worker_count: int = 2)
     if worker_count is null or worker_count < 1
         worker_count = 2
     end
@@ -123,7 +123,7 @@ pub function fs_pool_new(worker_count = 2)
     }
 end
 
-# Ensures the event loop has an initialized thread pool instance
+## Ensures the event loop has an initialized thread pool instance
 pub function loop_ensure_fs_pool(loop)
     if loop is null
         return null
@@ -135,8 +135,8 @@ pub function loop_ensure_fs_pool(loop)
 end
 
 # Dispatches an asynchronous file read operation to the worker thread pool
-# Invokes `on_complete(err, content)` on the reactor loop when done
-pub function fs_read_async(loop, path, on_complete)
+## Invokes `on_complete(err, content)` on the reactor loop when done
+pub function fs_read_async(loop, path: string, on_complete)
     if loop is null
         return -1
     end
@@ -153,8 +153,8 @@ pub function fs_read_async(loop, path, on_complete)
 end
 
 # Dispatches an asynchronous file write operation to the worker thread pool
-# Invokes `on_complete(err, bytes_written)` on the reactor loop when done
-pub function fs_write_async(loop, path, data, on_complete = null)
+## Invokes `on_complete(err, bytes_written)` on the reactor loop when done
+pub function fs_write_async(loop, path: string, data, on_complete = null)
     if loop is null
         return -1
     end
@@ -171,7 +171,7 @@ pub function fs_write_async(loop, path, data, on_complete = null)
 end
 
 # Polls completed filesystem tasks from the background worker response channel
-# Returns an array of EventNotification records ready for dispatch
+## Returns an array of EventNotification records ready for dispatch
 pub function fs_pool_poll_completed(loop)
     if loop is null or loop.fs_pool is null
         return []
@@ -194,15 +194,15 @@ pub function fs_pool_poll_completed(loop)
     return completed
 end
 
-# Returns the number of currently active / pending filesystem tasks in the pool
-pub function fs_pool_pending_count(loop)
+## Returns the number of currently active / pending filesystem tasks in the pool
+pub function fs_pool_pending_count(loop) -> int
     if loop is null or loop.fs_pool is null
         return 0
     end
     return loop.fs_pool.pending_tasks
 end
 
-# Stops all background worker threads and frees channels
+## Stops all background worker threads and frees channels
 pub function fs_pool_free(pool)
     if pool is null or pool.active == 0
         return

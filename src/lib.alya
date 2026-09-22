@@ -41,12 +41,12 @@ pub function loop_new(use_uv = true)
 end
 
 ## Returns the active kernel backend name ("WSAPoll", "epoll", "kqueue", or "fallback").
-pub function backend(loop)
+pub function backend(loop) -> string
     return loop_backend(loop)
 end
 
 ## Polls registered active socket watchers for I/O readiness within wait_ms.
-pub function poll(loop, wait_ms = 0)
+pub function poll(loop, wait_ms: int = 0)
     return poller_poll_watchers(loop, wait_ms)
 end
 
@@ -64,7 +64,7 @@ end
 ##
 ## ### Returns
 ## Integer timer identifier.
-pub function set_timeout(loop, delay_ms, tag = "", data = null)
+pub function set_timeout(loop, delay_ms: int, tag: string = "", data = null)
     return timer_add_timeout(loop, delay_ms, tag, data)
 end
 
@@ -78,12 +78,12 @@ end
 ##
 ## ### Returns
 ## Integer timer identifier.
-pub function set_interval(loop, interval_ms, tag = "", data = null)
+pub function set_interval(loop, interval_ms: int, tag: string = "", data = null)
     return timer_add_interval(loop, interval_ms, tag, data)
 end
 
 ## Cancels an active timer by its identifier.
-pub function clear_timer(loop, timer_id)
+pub function clear_timer(loop, timer_id: int) -> int
     return timer_cancel(loop, timer_id)
 end
 
@@ -92,37 +92,37 @@ end
 # ═══════════════════════════════════════════════════════════════
 
 ## Registers socket descriptor for readable incoming data events.
-pub function watch_read(loop, fd, tag = "", data = null)
+pub function watch_read(loop, fd: int, tag: string = "", data = null)
     return watcher_add(loop, fd, 1, tag, data)
 end
 
 ## Registers socket descriptor for writable readiness events.
-pub function watch_write(loop, fd, tag = "", data = null)
+pub function watch_write(loop, fd: int, tag: string = "", data = null)
     return watcher_add(loop, fd, 2, tag, data)
 end
 
 ## Deregisters an active socket watcher.
-pub function unwatch(loop, fd)
+pub function unwatch(loop, fd: int)
     return watcher_remove(loop, fd)
 end
 
 ## Alias for `watch_read`.
-pub function watch_readable(loop, fd, tag = "", data = null)
+pub function watch_readable(loop, fd: int, tag: string = "", data = null)
     return watcher_add(loop, fd, 1, tag, data)
 end
 
 ## Alias for `watch_write`.
-pub function watch_writable(loop, fd, tag = "", data = null)
+pub function watch_writable(loop, fd: int, tag: string = "", data = null)
     return watcher_add(loop, fd, 2, tag, data)
 end
 
 ## Registers an OS process signal watcher.
-pub function watch_signal(loop, signum, tag = "signal", data = null)
+pub function watch_signal(loop, signum: int, tag: string = "signal", data = null)
     return loop_watch_signal(loop, signum, tag, data)
 end
 
 ## Deregisters an OS process signal watcher.
-pub function unwatch_signal(loop, signum)
+pub function unwatch_signal(loop, signum: int)
     return loop_unwatch_signal(loop, signum)
 end
 
@@ -141,27 +141,27 @@ pub function emitter()
 end
 
 ## Creates a new circular RingBuffer instance.
-pub function ring(capacity = 65536)
+pub function ring(capacity: int = 65536)
     return ring_buffer_new(capacity)
 end
 
 ## Creates a frame-delimited StreamReader wrapping a stream ring buffer.
-pub function reader(delimiter = "\n", max_frame_size = 1048576, capacity = 65536)
+pub function reader(delimiter: string = "\n", max_frame_size: int = 1048576, capacity: int = 65536)
     return stream_reader_new(delimiter, max_frame_size, capacity)
 end
 
 ## Creates a high-level non-blocking TcpStream wrapping a socket handle.
-pub function stream(loop, fd, high_water_mark = 65536)
+pub function stream(loop, fd: int, high_water_mark: int = 65536)
     return tcp_stream_new(loop, fd, high_water_mark)
 end
 
 ## Starts listening on host:port and dispatches incoming TCP connections.
-pub function server(loop, host, port, on_connect, on_error = null, backlog = 128)
+pub function server(loop, host: string, port: int, on_connect, on_error = null, backlog: int = 128)
     return tcp_server_listen(loop, host, port, on_connect, on_error, backlog)
 end
 
 ## Connects asynchronously to a remote TCP host:port.
-pub function client(loop, host, port, on_connect = null, on_error = null)
+pub function client(loop, host: string, port: int, on_connect = null, on_error = null)
     return tcp_client_connect(loop, host, port, on_connect, on_error)
 end
 
@@ -175,21 +175,21 @@ end
 # ═══════════════════════════════════════════════════════════════
 
 ## Reads a file asynchronously off the main reactor loop.
-pub function read_async(loop, path, on_complete)
+pub function read_async(loop, path: string, on_complete)
     return fs_read_async(loop, path, on_complete)
 end
 
 ## Writes data to a file asynchronously off the main reactor loop.
-pub function write_async(loop, path, data, on_complete = null)
+pub function write_async(loop, path: string, data, on_complete = null)
     return fs_write_async(loop, path, data, on_complete)
 end
 
 ## Alias for `read_async`.
-pub function read_file_async(loop, path, on_complete)
+pub function read_file_async(loop, path: string, on_complete)
     return fs_read_async(loop, path, on_complete)
 end
 
 ## Alias for `write_async`.
-pub function write_file_async(loop, path, data, on_complete = null)
+pub function write_file_async(loop, path: string, data, on_complete = null)
     return fs_write_async(loop, path, data, on_complete)
 end

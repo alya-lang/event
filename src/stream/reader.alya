@@ -8,7 +8,7 @@ import "../types.alya"
 import "./ring.alya"
 
 ## Constructs a new StreamReader instance.
-pub function stream_reader_new(delimiter = "\n", max_frame_size = 1048576, capacity = 65536)
+pub function stream_reader_new(delimiter: string = "\n", max_frame_size: int = 1048576, capacity: int = 65536)
     if delimiter is null or len(delimiter) == 0
         delimiter = "\n"
     end
@@ -22,8 +22,8 @@ pub function stream_reader_new(delimiter = "\n", max_frame_size = 1048576, capac
     }
 end
 
-# Appends an incoming raw network chunk into the reader buffer
-pub function StreamReader.feed(self, chunk)
+## Appends an incoming raw network chunk into the reader buffer
+pub function StreamReader.feed(self: StreamReader, chunk)
     if self is null or chunk is null or len(chunk) == 0
         return 0
     end
@@ -31,8 +31,8 @@ pub function StreamReader.feed(self, chunk)
 end
 
 # Extracts the next line terminated by \n (with optional \r stripped)
-# Returns [line, has_line (1 or 0)]
-pub function StreamReader.read_line(self)
+## Returns [line, has_line (1 or 0)]
+pub function StreamReader.read_line(self: StreamReader) -> string
     if self is null or ring_available(self.ring) == 0
         return ["", 0]
     end
@@ -49,8 +49,8 @@ pub function StreamReader.read_line(self)
 end
 
 # Extracts a framed message payload up to delimiter `delim`
-# Consumes the delimiter and returns [payload, has_message (1 or 0)]
-pub function StreamReader.read_until(self, delim)
+## Consumes the delimiter and returns [payload, has_message (1 or 0)]
+pub function StreamReader.read_until(self: StreamReader, delim: string) -> string
     if self is null or ring_available(self.ring) == 0 or delim is null or len(delim) == 0
         return ["", 0]
     end
@@ -64,8 +64,8 @@ pub function StreamReader.read_until(self, delim)
 end
 
 # Extracts a fixed-length payload of exactly n bytes
-# Returns [chunk, has_chunk (1 or 0)]
-pub function StreamReader.read_bytes(self, n)
+## Returns [chunk, has_chunk (1 or 0)]
+pub function StreamReader.read_bytes(self: StreamReader, n: int) -> string
     if self is null or n is null or n <= 0 or ring_available(self.ring) < n
         return ["", 0]
     end
@@ -73,31 +73,31 @@ pub function StreamReader.read_bytes(self, n)
     return [payload, 1]
 end
 
-# Peeks up to n bytes from the reader without consuming them
-pub function StreamReader.peek(self, n)
+## Peeks up to n bytes from the reader without consuming them
+pub function StreamReader.peek(self: StreamReader, n: int) -> string
     if self is null
         return ""
     end
     return ring_peek(self.ring, n)
 end
 
-# Returns total bytes currently buffered in the reader
-pub function StreamReader.available(self)
+## Returns total bytes currently buffered in the reader
+pub function StreamReader.available(self: StreamReader) -> int
     if self is null
         return 0
     end
     return ring_available(self.ring)
 end
 
-# Clears all buffered data from the reader
-pub function StreamReader.clear(self)
+## Clears all buffered data from the reader
+pub function StreamReader.clear(self: StreamReader)
     if self is not null
         ring_clear(self.ring)
     end
 end
 
-# Returns 1 if reader has no buffered data, 0 otherwise
-pub function StreamReader.is_empty(self)
+## Returns 1 if reader has no buffered data, 0 otherwise
+pub function StreamReader.is_empty(self: StreamReader) -> int
     if self is null
         return 1
     end
@@ -106,34 +106,42 @@ end
 
 # --- Functional API for StreamReader ---
 
+## Feeds a chunk into a reader.
 pub function stream_reader_feed(reader, chunk)
     return StreamReader.feed(reader, chunk)
 end
 
-pub function stream_reader_read_line(reader)
+## Reads one line from a reader.
+pub function stream_reader_read_line(reader) -> string
     return StreamReader.read_line(reader)
 end
 
-pub function stream_reader_read_until(reader, delim)
+## Reads up to a delimiter from a reader.
+pub function stream_reader_read_until(reader, delim: string) -> string
     return StreamReader.read_until(reader, delim)
 end
 
-pub function stream_reader_read_bytes(reader, n)
+## Reads up to n bytes from a reader.
+pub function stream_reader_read_bytes(reader, n: int) -> string
     return StreamReader.read_bytes(reader, n)
 end
 
-pub function stream_reader_peek(reader, n)
+## Peeks at upcoming bytes without consuming.
+pub function stream_reader_peek(reader, n: int) -> string
     return StreamReader.peek(reader, n)
 end
 
-pub function stream_reader_available(reader)
+## Returns the buffered byte count of a reader.
+pub function stream_reader_available(reader) -> int
     return StreamReader.available(reader)
 end
 
+## Clears a reader buffer.
 pub function stream_reader_clear(reader)
     StreamReader.clear(reader)
 end
 
-pub function stream_reader_is_empty(reader)
+## Returns 1 when a reader buffer is empty.
+pub function stream_reader_is_empty(reader) -> int
     return StreamReader.is_empty(reader)
 end

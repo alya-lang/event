@@ -15,8 +15,8 @@ pub function buffer_append(buf, chunk)
     return len(chunk)
 end
 
-# Concatenates and returns the entire contents of the buffer as a single string
-pub function buffer_to_string(buf)
+## Concatenates and returns the entire contents of the buffer as a single string
+pub function buffer_to_string(buf) -> string
     if buf is null or len(buf.chunks) == 0
         return ""
     end
@@ -27,7 +27,7 @@ pub function buffer_to_string(buf)
     return res
 end
 
-# Clears the buffer contents and resets total byte count
+## Clears the buffer contents and resets total byte count
 pub function buffer_clear(buf)
     if buf is not null
         buf.chunks = []
@@ -35,8 +35,8 @@ pub function buffer_clear(buf)
     end
 end
 
-# Returns total byte length accumulated in the buffer
-pub function buffer_len(buf)
+## Returns total byte length accumulated in the buffer
+pub function buffer_len(buf) -> int
     if buf is null
         return 0
     end
@@ -44,7 +44,7 @@ pub function buffer_len(buf)
 end
 
 # Extracts a line terminated by newline (\n or \r\n) from the buffer
-# Returns [line, has_line (1 or 0)]
+## Returns [line, has_line (1 or 0)]
 pub function buffer_read_line(buf)
     if buf is null or buf.total_bytes == 0
         return ["", 0]
@@ -74,22 +74,27 @@ end
 
 # --- Struct Methods on StreamBuffer ---
 
+## Appends a chunk to this buffer.
 pub function StreamBuffer.append(self: StreamBuffer, chunk)
     return buffer_append(self, chunk)
 end
 
-pub function StreamBuffer.to_string(self: StreamBuffer)
+## Drains this buffer into a string.
+pub function StreamBuffer.to_string(self: StreamBuffer) -> string
     return buffer_to_string(self)
 end
 
+## Clears this buffer.
 pub function StreamBuffer.clear(self: StreamBuffer)
     buffer_clear(self)
 end
 
-pub function StreamBuffer.len(self: StreamBuffer)
+## Returns the buffered byte count.
+pub function StreamBuffer.len(self: StreamBuffer) -> int
     return buffer_len(self)
 end
 
+## Reads one line from this buffer.
 pub function StreamBuffer.read_line(self: StreamBuffer)
     return buffer_read_line(self)
 end

@@ -1,4 +1,5 @@
-# Comprehensive EventEmitter tests for event package
+## Comprehensive EventEmitter tests for event package
+## Part of the Alya Language package ecosystem (https://github.com/alya-lang)
 import "std/test"
 import "../src/lib.alya" as ev
 

@@ -7,7 +7,7 @@ import "../types.alya"
 
 ## Registers a one-shot timeout in the loop.
 ## Returns the assigned timer ID (integer >= 1).
-pub function timer_add_timeout(loop, delay_ms, tag = "", data = null)
+pub function timer_add_timeout(loop, delay_ms: int, tag: string = "", data = null) -> int
     if loop is null
         return -1
     end
@@ -24,8 +24,8 @@ pub function timer_add_timeout(loop, delay_ms, tag = "", data = null)
 end
 
 # Registers a recurring interval timer in the loop
-# Returns the assigned timer ID (integer >= 1)
-pub function timer_add_interval(loop, interval_ms, tag = "", data = null)
+## Returns the assigned timer ID (integer >= 1)
+pub function timer_add_interval(loop, interval_ms: int, tag: string = "", data = null) -> int
     if loop is null
         return -1
     end
@@ -42,8 +42,8 @@ pub function timer_add_interval(loop, interval_ms, tag = "", data = null)
 end
 
 # Cancels an existing active timer by its ID
-# Returns 1 if found and cancelled, 0 otherwise
-pub function timer_cancel(loop, timer_id)
+## Returns 1 if found and cancelled, 0 otherwise
+pub function timer_cancel(loop, timer_id: int) -> int
     if loop is null or timer_id is null or timer_id < 0
         return 0
     end
@@ -56,8 +56,8 @@ pub function timer_cancel(loop, timer_id)
     return 0
 end
 
-# Returns the number of currently active timers in the loop
-pub function timer_count_active(loop)
+## Returns the number of currently active timers in the loop
+pub function timer_count_active(loop) -> int
     if loop is null
         return 0
     end
@@ -71,8 +71,8 @@ pub function timer_count_active(loop)
 end
 
 # Calculates the wait duration in milliseconds until the closest timer expires
-# If no active timers exist, returns max_wait_ms
-pub function timer_nearest_wait_ms(loop, max_wait_ms = 1000)
+## If no active timers exist, returns max_wait_ms
+pub function timer_nearest_wait_ms(loop, max_wait_ms: int = 1000) -> int
     if loop is null
         return max_wait_ms
     end
@@ -99,8 +99,8 @@ pub function timer_nearest_wait_ms(loop, max_wait_ms = 1000)
     return min_wait
 end
 
-# Collects all expired timers, reschedules intervals, and returns EventNotification records
-pub function timer_collect_expired(loop)
+## Collects all expired timers, reschedules intervals, and returns EventNotification records
+pub function timer_collect_expired(loop) -> array
     if loop is null
         return []
     end

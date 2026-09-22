@@ -40,7 +40,7 @@ end
 ##
 ## ### Returns
 ## Uppercase event name string.
-pub function event_type_name(t)
+pub function event_type_name(t) -> string
     return when t
         is EventType.Read   => "READ"
         is EventType.Write  => "WRITE"
@@ -62,16 +62,16 @@ end
 ## - `data`: Arbitrary user payload attached to the watcher or timer.
 ## - `timestamp`: Millisecond monotonic timestamp when event triggered.
 pub struct EventNotification
-    event_type,
-    fd,
-    timer_id,
-    tag,
+    event_type: int,
+    fd: int,
+    timer_id: int,
+    tag: string,
     data,
-    timestamp
+    timestamp: int
 end
 
 ## Returns a summary string representation of an EventNotification.
-pub function EventNotification.summary(self)
+pub function EventNotification.summary(self: EventNotification) -> string
     let type_str = event_type_name(self.event_type)
     return "EventNotification({type_str}, fd={self.fd}, timer_id={self.timer_id}, tag={self.tag})"
 end
@@ -87,7 +87,7 @@ end
 ##
 ## ### Returns
 ## Initialized `EventNotification` instance.
-pub function event_notification_new(event_type, fd = -1, timer_id = -1, tag = "", data = null)
+pub function event_notification_new(event_type, fd: int = -1, timer_id: int = -1, tag: string = "", data = null)
     return EventNotification {
         event_type: event_type,
         fd: fd,
@@ -108,21 +108,21 @@ end
 ## - `data`: Arbitrary user payload.
 ## - `active`: `1` if timer is active, `0` if cancelled.
 pub struct Timer
-    id,
-    deadline_ms,
-    interval_ms,
-    tag,
+    id: int,
+    deadline_ms: int,
+    interval_ms: int,
+    tag: string,
     data,
-    active
+    active: int
 end
 
 ## Returns whether this timer is currently active.
-pub function Timer.is_active(self)
+pub function Timer.is_active(self: Timer) -> int
     return self.active == 1
 end
 
 ## Cancels this timer, preventing it from firing further.
-pub function Timer.cancel(self)
+pub function Timer.cancel(self: Timer)
     self.active = 0
 end
 
@@ -137,7 +137,7 @@ end
 ##
 ## ### Returns
 ## Initialized `Timer` instance.
-pub function timer_new(id, deadline_ms, interval_ms = 0, tag = "", data = null)
+pub function timer_new(id, deadline_ms, interval_ms: int = 0, tag: string = "", data = null)
     return Timer {
         id: id,
         deadline_ms: deadline_ms,
@@ -158,21 +158,21 @@ end
 ## - `data`: Attached user payload.
 ## - `active`: `1` if watcher is active, `0` if cancelled.
 pub struct IoWatcher
-    id,
-    fd,
-    events,
-    tag,
+    id: int,
+    fd: int,
+    events: int,
+    tag: string,
     data,
-    active
+    active: int
 end
 
 ## Returns whether this I/O watcher is currently active.
-pub function IoWatcher.is_active(self)
+pub function IoWatcher.is_active(self: IoWatcher) -> int
     return self.active == 1
 end
 
 ## Cancels this I/O watcher and ceases polling its descriptor.
-pub function IoWatcher.cancel(self)
+pub function IoWatcher.cancel(self: IoWatcher)
     self.active = 0
 end
 
@@ -187,7 +187,7 @@ end
 ##
 ## ### Returns
 ## Initialized `IoWatcher` instance.
-pub function io_watcher_new(id, fd, events = 1, tag = "", data = null)
+pub function io_watcher_new(id, fd: int, events: int = 1, tag: string = "", data = null)
     return IoWatcher {
         id: id,
         fd: fd,
@@ -212,22 +212,22 @@ end
 ## - `backend`: Name string of active backend engine.
 ## - `fs_pool`: Optional asynchronous worker thread pool.
 pub struct EventLoop
-    running,
-    timers,
-    watchers,
-    next_timer_id,
-    next_watcher_id,
-    tick_count,
-    stop_requested,
+    running: int,
+    timers: array,
+    watchers: array,
+    next_timer_id: int,
+    next_watcher_id: int,
+    tick_count: int,
+    stop_requested: int,
     poller,
-    backend,
+    backend: string,
     fs_pool
 end
 
 ## Dynamic byte buffer holding chunked string sequences.
 pub struct StreamBuffer
-    chunks,
-    total_bytes
+    chunks: array,
+    total_bytes: int
 end
 
 ## Constructs an empty StreamBuffer instance.
@@ -243,18 +243,18 @@ end
 
 ## Registered event listener callback definition.
 pub struct EventListener
-    id,
-    event_name,
-    is_once,
-    tag,
+    id: int,
+    event_name: string,
+    is_once: int,
+    tag: string,
     data,
-    active
+    active: int
 end
 
 ## Event emitter registry managing event subscriptions and dispatch.
 pub struct EventEmitter
-    listeners,
-    next_id
+    listeners: map,
+    next_id: int
 end
 
 ## Constructs a new EventEmitter instance.
@@ -271,31 +271,31 @@ end
 ## High-performance circular ring buffer for stream data.
 pub struct RingBuffer
     raw,
-    size,
-    capacity
+    size: int,
+    capacity: int
 end
 
 ## Frame-delimited buffered stream reader for continuous streams.
 pub struct StreamReader
     ring,
-    delimiter,
-    max_frame_size
+    delimiter: string,
+    max_frame_size: int
 end
 
 ## High-level asynchronous non-blocking TCP socket stream.
 pub struct TcpStream
     loop,
-    fd,
-    peer_addr,
-    tag,
+    fd: int,
+    peer_addr: string,
+    tag: string,
     data,
-    closed,
-    paused,
-    high_water_mark,
-    write_buf,
+    closed: int,
+    paused: int,
+    high_water_mark: int,
+    write_buf: array,
     reader,
-    peer_ip,
-    peer_port,
+    peer_ip: string,
+    peer_port: int,
     on_data_cb,
     on_line_cb,
     on_close_cb,
@@ -306,14 +306,14 @@ end
 ## High-level asynchronous non-blocking TCP server listener.
 pub struct TcpServer
     loop,
-    fd,
-    host,
-    tag,
+    fd: int,
+    host: string,
+    tag: string,
     data,
-    port,
-    backlog,
-    listening,
+    port: int,
+    backlog: int,
+    listening: int,
     on_connect_cb,
     on_error_cb,
-    clients
+    clients: array
 end

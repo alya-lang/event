@@ -6,7 +6,7 @@
 import "../types.alya"
 
 ## Constructs a new RingBuffer instance with the given byte capacity.
-pub function ring_buffer_new(capacity = 65536)
+pub function ring_buffer_new(capacity: int = 65536)
     if capacity is null or capacity <= 0
         capacity = 65536
     end
@@ -18,8 +18,8 @@ pub function ring_buffer_new(capacity = 65536)
 end
 
 # Writes incoming data chunk into the ring buffer
-# Returns number of bytes successfully accepted, or -1 if buffer is full
-pub function RingBuffer.write(self, chunk)
+## Returns number of bytes successfully accepted, or -1 if buffer is full
+pub function RingBuffer.write(self: RingBuffer, chunk)
     if self is null or chunk is null or len(chunk) == 0
         return 0
     end
@@ -37,8 +37,8 @@ pub function RingBuffer.write(self, chunk)
     return chunk_len
 end
 
-# Consumes and returns up to n bytes from the buffer
-pub function RingBuffer.read(self, n)
+## Consumes and returns up to n bytes from the buffer
+pub function RingBuffer.read(self: RingBuffer, n: int)
     if self is null or self.size == 0 or n is null or n <= 0
         return ""
     end
@@ -54,8 +54,8 @@ pub function RingBuffer.read(self, n)
     return res
 end
 
-# Peeks up to n bytes without consuming them from the buffer
-pub function RingBuffer.peek(self, n)
+## Peeks up to n bytes without consuming them from the buffer
+pub function RingBuffer.peek(self: RingBuffer, n: int)
     if self is null or self.size == 0 or n is null or n <= 0
         return ""
     end
@@ -65,40 +65,40 @@ pub function RingBuffer.peek(self, n)
     return self.raw[0..n]
 end
 
-# Resets and discards all data in the ring buffer
-pub function RingBuffer.clear(self)
+## Resets and discards all data in the ring buffer
+pub function RingBuffer.clear(self: RingBuffer)
     if self is not null
         self.raw = ""
         self.size = 0
     end
 end
 
-# Returns count of bytes currently buffered
-pub function RingBuffer.available(self)
+## Returns count of bytes currently buffered
+pub function RingBuffer.available(self: RingBuffer) -> int
     if self is null
         return 0
     end
     return self.size
 end
 
-# Returns available free capacity remaining in the buffer
-pub function RingBuffer.free_space(self)
+## Returns available free capacity remaining in the buffer
+pub function RingBuffer.free_space(self: RingBuffer) -> int
     if self is null
         return 0
     end
     return self.capacity - self.size
 end
 
-# Returns 1 if buffer is completely empty, 0 otherwise
-pub function RingBuffer.is_empty(self)
+## Returns 1 if buffer is completely empty, 0 otherwise
+pub function RingBuffer.is_empty(self: RingBuffer) -> int
     if self is null
         return 1
     end
     return self.size == 0
 end
 
-# Returns 1 if buffer is completely full, 0 otherwise
-pub function RingBuffer.is_full(self)
+## Returns 1 if buffer is completely full, 0 otherwise
+pub function RingBuffer.is_full(self: RingBuffer) -> int
     if self is null
         return 0
     end
@@ -107,34 +107,42 @@ end
 
 # --- Functional API for RingBuffer ---
 
+## Writes a chunk into a ring buffer.
 pub function ring_write(buf, chunk)
     return RingBuffer.write(buf, chunk)
 end
 
-pub function ring_read(buf, n)
+## Reads up to n bytes from a ring buffer.
+pub function ring_read(buf, n: int)
     return RingBuffer.read(buf, n)
 end
 
-pub function ring_peek(buf, n)
+## Peeks at upcoming ring bytes without consuming.
+pub function ring_peek(buf, n: int)
     return RingBuffer.peek(buf, n)
 end
 
+## Clears a ring buffer.
 pub function ring_clear(buf)
     RingBuffer.clear(buf)
 end
 
-pub function ring_available(buf)
+## Returns the readable byte count of a ring.
+pub function ring_available(buf) -> int
     return RingBuffer.available(buf)
 end
 
-pub function ring_free_space(buf)
+## Returns the writable byte count of a ring.
+pub function ring_free_space(buf) -> int
     return RingBuffer.free_space(buf)
 end
 
-pub function ring_is_empty(buf)
+## Returns 1 when a ring buffer is empty.
+pub function ring_is_empty(buf) -> int
     return RingBuffer.is_empty(buf)
 end
 
-pub function ring_is_full(buf)
+## Returns 1 when a ring buffer is full.
+pub function ring_is_full(buf) -> int
     return RingBuffer.is_full(buf)
 end

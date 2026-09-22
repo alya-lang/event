@@ -7,7 +7,7 @@ import "../types.alya"
 
 ## Registers an I/O watcher for socket `fd`.
 ## `events`: 1 (READ), 2 (WRITE), or 3 (READ | WRITE).
-pub function watcher_add(loop, fd, events = 1, tag = "", data = null)
+pub function watcher_add(loop, fd: int, events: int = 1, tag: string = "", data = null)
     if loop is null or fd is null or fd < 0
         return -1
     end
@@ -36,8 +36,8 @@ pub function watcher_add(loop, fd, events = 1, tag = "", data = null)
 end
 
 # Removes an I/O watcher for a socket descriptor
-# Returns 1 if found and removed, 0 otherwise
-pub function watcher_remove(loop, fd)
+## Returns 1 if found and removed, 0 otherwise
+pub function watcher_remove(loop, fd: int) -> int
     if loop is null or fd is null
         return 0
     end
@@ -60,8 +60,8 @@ pub function watcher_remove(loop, fd)
     return removed
 end
 
-# Returns the number of currently active socket watchers
-pub function watcher_count_active(loop)
+## Returns the number of currently active socket watchers
+pub function watcher_count_active(loop) -> int
     if loop is null
         return 0
     end
@@ -75,7 +75,7 @@ pub function watcher_count_active(loop)
 end
 
 ## Finds an active watcher by socket descriptor.
-pub function watcher_find(loop, fd)
+pub function watcher_find(loop, fd: int)
     if loop is null or fd is null
         return null
     end
@@ -88,7 +88,7 @@ pub function watcher_find(loop, fd)
 end
 
 ## Finds an active watcher by unique watcher ID.
-pub function watcher_find_by_id(loop, wid)
+pub function watcher_find_by_id(loop, wid: int)
     if loop is null or wid is null
         return null
     end

@@ -40,7 +40,7 @@ pub function event_loop_new(use_uv = true)
     }
 end
 
-# Requests the event loop to stop
+## Requests the event loop to stop
 pub function loop_stop(loop)
     if loop is not null
         loop.stop_requested = 1
@@ -48,16 +48,16 @@ pub function loop_stop(loop)
     end
 end
 
-# Returns the active backend name ("WSAPoll", "epoll", "kqueue", or "fallback")
-pub function loop_backend(loop)
+## Returns the active backend name ("WSAPoll", "epoll", "kqueue", or "fallback")
+pub function loop_backend(loop) -> string
     if loop is null
         return "none"
     end
     return loop.backend
 end
 
-# Returns 1 if the event loop is active and has work to do, 0 otherwise
-pub function loop_is_running(loop)
+## Returns 1 if the event loop is active and has work to do, 0 otherwise
+pub function loop_is_running(loop) -> int
     if loop is null or loop.stop_requested == 1
         return 0
     end
@@ -70,8 +70,8 @@ pub function loop_is_running(loop)
     return 0
 end
 
-# Returns the total count of active handles (timers + I/O watchers + async fs tasks)
-pub function loop_active_count(loop)
+## Returns the total count of active handles (timers + I/O watchers + async fs tasks)
+pub function loop_active_count(loop) -> int
     if loop is null
         return 0
     end
@@ -81,7 +81,7 @@ pub function loop_active_count(loop)
     return t + w + f
 end
 
-# Resets all state in the loop
+## Resets all state in the loop
 pub function loop_reset(loop)
     if loop is not null
         if loop.poller is not null
@@ -105,8 +105,8 @@ end
 # 2. Poll socket I/O watchers via kernel multiplexer (or fallback)
 # 3. Collect expired timers
 # 4. Poll completed offloaded filesystem tasks from worker thread pool
-# Returns an array of EventNotification records triggered in this tick
-pub function loop_tick(loop, max_wait_ms = 100)
+## Returns an array of EventNotification records triggered in this tick
+pub function loop_tick(loop, max_wait_ms: int = 100)
     if loop is null
         return []
     end
@@ -148,12 +148,12 @@ pub function loop_tick(loop, max_wait_ms = 100)
     return all_events
 end
 
-# Polls the event loop for up to max_wait_ms milliseconds and returns all triggered events
-pub function loop_poll(loop, max_wait_ms = 100)
+## Polls the event loop for up to max_wait_ms milliseconds and returns all triggered events
+pub function loop_poll(loop, max_wait_ms: int = 100) -> array
     return loop_tick(loop, max_wait_ms)
 end
 
-# Dispatches an event notification to its registered handler or callbacks
+## Dispatches an event notification to its registered handler or callbacks
 pub function loop_dispatch_event(ev)
     if ev is null or ev.data is null
         return 0
@@ -227,8 +227,8 @@ end
 # Continuously runs the event loop until stop is requested or no active handles remain.
 # If on_event callback is provided, it is invoked for each triggered event.
 # Otherwise, events are dispatched automatically to registered handlers.
-# Returns total number of events processed across all iterations.
-pub function loop_run(loop, max_wait_ms = 100, on_event = null)
+## Returns total number of events processed across all iterations.
+pub function loop_run(loop, max_wait_ms: int = 100, on_event = null)
     if loop is null
         return 0
     end
@@ -249,8 +249,8 @@ pub function loop_run(loop, max_wait_ms = 100, on_event = null)
     return total_events
 end
 
-# Registers an OS process signal watcher (e.g. SIGINT = 2, SIGTERM = 15)
-pub function loop_watch_signal(loop, signum, tag = "signal", data = null)
+## Registers an OS process signal watcher (e.g. SIGINT = 2, SIGTERM = 15)
+pub function loop_watch_signal(loop, signum: int, tag: string = "signal", data = null)
     if loop is null or loop.poller is null or signum is null or signum <= 0
         return -1
     end
@@ -265,8 +265,8 @@ pub function loop_watch_signal(loop, signum, tag = "signal", data = null)
     return -1
 end
 
-# Deregisters an OS process signal watcher
-pub function loop_unwatch_signal(loop, signum)
+## Deregisters an OS process signal watcher
+pub function loop_unwatch_signal(loop, signum: int)
     if loop is null or loop.poller is null or signum is null or signum <= 0
         return 0
     end
@@ -275,7 +275,7 @@ pub function loop_unwatch_signal(loop, signum)
     return removed
 end
 
-# Frees and resets all resources in the event loop
+## Frees and resets all resources in the event loop
 pub function loop_free(loop)
     if loop is not null
         loop_stop(loop)
@@ -295,126 +295,154 @@ pub function loop_free(loop)
     end
 end
 
-# UFCS global dispatch for loop.run(...)
-pub function run(loop, max_wait_ms = 100, on_event = null)
+## UFCS global dispatch for loop.run(...)
+pub function run(loop, max_wait_ms: int = 100, on_event = null)
     return loop_run(loop, max_wait_ms, on_event)
 end
 
-# UFCS global dispatch for loop.free(...)
+## UFCS global dispatch for loop.free(...)
 pub function free(loop)
     loop_free(loop)
 end
 
 # --- Struct Methods on EventLoop ---
 
-pub function EventLoop.stop(self)
+## Stops this event loop.
+pub function EventLoop.stop(self: EventLoop)
     loop_stop(self)
 end
 
-pub function EventLoop.backend(self)
+## Returns the backend name of this loop.
+pub function EventLoop.backend(self: EventLoop) -> string
     return loop_backend(self)
 end
 
-pub function EventLoop.is_running(self)
+## Returns 1 while this loop is running.
+pub function EventLoop.is_running(self: EventLoop) -> int
     return loop_is_running(self)
 end
 
-pub function EventLoop.active_count(self)
+## Returns the active handle count of this loop.
+pub function EventLoop.active_count(self: EventLoop) -> int
     return loop_active_count(self)
 end
 
-pub function EventLoop.reset(self)
+## Resets this loop, dropping timers and watchers.
+pub function EventLoop.reset(self: EventLoop)
     loop_reset(self)
 end
 
-pub function EventLoop.free(self)
+## Frees native resources held by this loop.
+pub function EventLoop.free(self: EventLoop)
     loop_free(self)
 end
 
-pub function EventLoop.tick(self, max_wait_ms = 100)
+## Runs a single tick of this loop.
+pub function EventLoop.tick(self: EventLoop, max_wait_ms: int = 100)
     return loop_tick(self, max_wait_ms)
 end
 
-pub function EventLoop.poll(self, max_wait_ms = 100)
+## Polls this loop once for ready events.
+pub function EventLoop.poll(self: EventLoop, max_wait_ms: int = 100) -> array
     return loop_poll(self, max_wait_ms)
 end
 
-pub function EventLoop.run(self, max_wait_ms = 100, on_event = null)
+## Runs this loop until stopped.
+pub function EventLoop.run(self: EventLoop, max_wait_ms: int = 100, on_event = null)
     return loop_run(self, max_wait_ms, on_event)
 end
 
-pub function EventLoop.timeout(self, delay_ms, tag = "", data = null)
+## Registers a one-shot timeout on this loop.
+pub function EventLoop.timeout(self: EventLoop, delay_ms: int, tag: string = "", data = null)
     return timer_add_timeout(self, delay_ms, tag, data)
 end
 
-pub function EventLoop.set_timeout(self, delay_ms, tag = "", data = null)
+## Alias for timeout on this loop.
+pub function EventLoop.set_timeout(self: EventLoop, delay_ms: int, tag: string = "", data = null)
     return timer_add_timeout(self, delay_ms, tag, data)
 end
 
-pub function EventLoop.interval(self, interval_ms, tag = "", data = null)
+## Registers a recurring interval on this loop.
+pub function EventLoop.interval(self: EventLoop, interval_ms: int, tag: string = "", data = null)
     return timer_add_interval(self, interval_ms, tag, data)
 end
 
-pub function EventLoop.set_interval(self, interval_ms, tag = "", data = null)
+## Alias for interval on this loop.
+pub function EventLoop.set_interval(self: EventLoop, interval_ms: int, tag: string = "", data = null)
     return timer_add_interval(self, interval_ms, tag, data)
 end
 
-pub function EventLoop.clear_timer(self, timer_id)
+## Cancels a timer on this loop by ID.
+pub function EventLoop.clear_timer(self: EventLoop, timer_id: int) -> int
     return timer_cancel(self, timer_id)
 end
 
-pub function EventLoop.watch_read(self, fd, tag = "", data = null)
+## Watches a descriptor for readability on this loop.
+pub function EventLoop.watch_read(self: EventLoop, fd: int, tag: string = "", data = null)
     return watcher_add(self, fd, 1, tag, data)
 end
 
-pub function EventLoop.watch_readable(self, fd, tag = "", data = null)
+## Alias for watch_read on this loop.
+pub function EventLoop.watch_readable(self: EventLoop, fd: int, tag: string = "", data = null)
     return watcher_add(self, fd, 1, tag, data)
 end
 
-pub function EventLoop.watch_write(self, fd, tag = "", data = null)
+## Watches a descriptor for writability on this loop.
+pub function EventLoop.watch_write(self: EventLoop, fd: int, tag: string = "", data = null)
     return watcher_add(self, fd, 2, tag, data)
 end
 
-pub function EventLoop.watch_writable(self, fd, tag = "", data = null)
+## Alias for watch_write on this loop.
+pub function EventLoop.watch_writable(self: EventLoop, fd: int, tag: string = "", data = null)
     return watcher_add(self, fd, 2, tag, data)
 end
 
-pub function EventLoop.watch_signal(self, signum, tag = "signal", data = null)
+## Watches an OS signal on this loop.
+pub function EventLoop.watch_signal(self: EventLoop, signum: int, tag: string = "signal", data = null)
     return loop_watch_signal(self, signum, tag, data)
 end
 
-pub function EventLoop.unwatch_signal(self, signum)
+## Removes a signal watcher from this loop.
+pub function EventLoop.unwatch_signal(self: EventLoop, signum: int)
     return loop_unwatch_signal(self, signum)
 end
 
-pub function EventLoop.unwatch(self, fd)
+## Removes a descriptor watcher from this loop.
+pub function EventLoop.unwatch(self: EventLoop, fd: int)
     return watcher_remove(self, fd)
 end
 
-pub function EventLoop.on_readable(self, fd, callback)
+## Registers a readability callback on this loop.
+pub function EventLoop.on_readable(self: EventLoop, fd: int, callback)
     return watcher_add(self, fd, 1, "readable", callback)
 end
 
-pub function EventLoop.on_writable(self, fd, callback)
+## Registers a writability callback on this loop.
+pub function EventLoop.on_writable(self: EventLoop, fd: int, callback)
     return watcher_add(self, fd, 2, "writable", callback)
 end
 
-pub function EventLoop.dispatch(self, ev)
+## Dispatches an event through this loop.
+pub function EventLoop.dispatch(self: EventLoop, ev)
     return loop_dispatch_event(ev)
 end
 
-pub function EventLoop.fs_read(self, path, on_complete)
+## Reads a file asynchronously via this loop.
+pub function EventLoop.fs_read(self: EventLoop, path: string, on_complete)
     return fs_read_async(self, path, on_complete)
 end
 
-pub function EventLoop.fs_write(self, path, data, on_complete = null)
+## Writes a file asynchronously via this loop.
+pub function EventLoop.fs_write(self: EventLoop, path: string, data, on_complete = null)
     return fs_write_async(self, path, data, on_complete)
 end
 
-pub function EventLoop.read_file(self, path, on_complete)
+## Alias for fs_read on this loop.
+pub function EventLoop.read_file(self: EventLoop, path: string, on_complete)
     return fs_read_async(self, path, on_complete)
 end
 
-pub function EventLoop.write_file(self, path, data, on_complete = null)
+## Alias for fs_write on this loop.
+pub function EventLoop.write_file(self: EventLoop, path: string, data, on_complete = null)
     return fs_write_async(self, path, data, on_complete)
 end

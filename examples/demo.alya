@@ -1,5 +1,5 @@
-# Full Feature Demonstration of Lib/event
-# Part of the Alya Language package ecosystem (https://github.com/alya-lang)
+## Demo of the event package
+## Part of the Alya Language package ecosystem (https://github.com/alya-lang)
 
 import "std/net"
 import "../src/lib.alya" as ev

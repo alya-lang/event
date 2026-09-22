@@ -10,7 +10,7 @@ import "./reader.alya"
 import "../core/watcher.alya"
 
 ## Constructs and initializes a new TcpStream over socket descriptor fd.
-pub function tcp_stream_new(loop, fd, high_water_mark = 65536)
+pub function tcp_stream_new(loop, fd: int, high_water_mark: int = 65536)
     if loop is null or fd is null or fd < 0
         return null
     end
@@ -45,7 +45,7 @@ pub function tcp_stream_new(loop, fd, high_water_mark = 65536)
     return stream
 end
 
-# Non-blocking write operation with backpressure protection.
+## Non-blocking write operation with backpressure protection.
 pub function tcp_stream_write(stream, data)
     if stream is null or stream.closed == 1
         return -1
@@ -91,11 +91,12 @@ pub function tcp_stream_write(stream, data)
     return 1
 end
 
+## Writes data to this stream.
 pub function TcpStream.write(self: TcpStream, data)
     return tcp_stream_write(self, data)
 end
 
-# Flushes pending bytes from write buffer when socket becomes writable
+## Flushes pending bytes from write buffer when socket becomes writable
 pub function tcp_stream_flush(stream)
     if stream is null or stream.closed == 1
         return 0
@@ -136,12 +137,13 @@ pub function tcp_stream_flush(stream)
     return 0
 end
 
+## Flushes pending writes on this stream.
 pub function TcpStream.flush(self: TcpStream)
     return tcp_stream_flush(self)
 end
 
-# Reads incoming chunk from socket, feeds reader, and dispatches callbacks
-pub function tcp_stream_read(stream, max_bytes = 4096)
+## Reads incoming chunk from socket, feeds reader, and dispatches callbacks
+pub function tcp_stream_read(stream, max_bytes: int = 4096)
     if stream is null or stream.closed == 1 or stream.paused == 1
         return ""
     end
@@ -181,11 +183,12 @@ pub function tcp_stream_read(stream, max_bytes = 4096)
     return chunk
 end
 
-pub function TcpStream.read(self, max_bytes = 4096)
+## Reads up to max_bytes from this stream.
+pub function TcpStream.read(self: TcpStream, max_bytes: int = 4096)
     return tcp_stream_read(self, max_bytes)
 end
 
-# Pauses incoming reads from the socket (Flow Control)
+## Pauses incoming reads from the socket (Flow Control)
 pub function tcp_stream_pause(stream)
     if stream is null or stream.closed == 1 or stream.paused == 1
         return 0
@@ -199,11 +202,12 @@ pub function tcp_stream_pause(stream)
     return 1
 end
 
+## Pauses reads on this stream.
 pub function TcpStream.pause(self: TcpStream)
     return tcp_stream_pause(self)
 end
 
-# Resumes incoming reads from the socket (Flow Control)
+## Resumes incoming reads from the socket (Flow Control)
 pub function tcp_stream_resume(stream)
     if stream is null or stream.closed == 1 or stream.paused == 0
         return 0
@@ -217,11 +221,12 @@ pub function tcp_stream_resume(stream)
     return 1
 end
 
+## Resumes reads on this stream.
 pub function TcpStream.resume(self: TcpStream)
     return tcp_stream_resume(self)
 end
 
-# Closes socket and unregisters all watchers from event loop
+## Closes socket and unregisters all watchers from event loop
 pub function tcp_stream_close(stream: TcpStream)
     if stream is null or stream.closed == 1
         return 0
@@ -236,11 +241,12 @@ pub function tcp_stream_close(stream: TcpStream)
     return 1
 end
 
+## Closes this stream.
 pub function TcpStream.close(self: TcpStream)
     return tcp_stream_close(self)
 end
 
-# Registers a raw data chunk callback: function(stream, chunk)
+## Registers a raw data chunk callback: function(stream, chunk)
 pub function stream_on_data(stream, callback)
     if stream is not null
         stream.on_data_cb = callback
@@ -248,11 +254,12 @@ pub function stream_on_data(stream, callback)
     return stream
 end
 
+## Registers a data callback on this stream.
 pub function TcpStream.on_data(self: TcpStream, callback)
     return stream_on_data(self, callback)
 end
 
-# Registers a line-delimited message callback: function(stream, line)
+## Registers a line-delimited message callback: function(stream, line)
 pub function stream_on_line(stream, callback)
     if stream is not null
         stream.on_line_cb = callback
@@ -260,36 +267,42 @@ pub function stream_on_line(stream, callback)
     return stream
 end
 
+## Registers a line callback on this stream.
 pub function TcpStream.on_line(self: TcpStream, callback)
     return stream_on_line(self, callback)
 end
 
-# Functional aliases for stream operations
+## Functional aliases for stream operations
 pub function stream_write(stream, data)
     return tcp_stream_write(stream, data)
 end
 
+## Flushes pending writes on a stream.
 pub function stream_flush(stream)
     return tcp_stream_flush(stream)
 end
 
-pub function stream_read(stream, max_bytes = 4096)
+## Reads up to max_bytes from a stream.
+pub function stream_read(stream, max_bytes: int = 4096)
     return tcp_stream_read(stream, max_bytes)
 end
 
+## Pauses reads on a stream.
 pub function stream_pause(stream)
     return tcp_stream_pause(stream)
 end
 
+## Resumes reads on a stream.
 pub function stream_resume(stream)
     return tcp_stream_resume(stream)
 end
 
+## Closes a stream.
 pub function stream_close(stream)
     return tcp_stream_close(stream)
 end
 
-# Registers a socket disconnect / close callback: function(stream)
+## Registers a socket disconnect / close callback: function(stream)
 pub function TcpStream.on_close(self: TcpStream, callback)
     if self is not null
         self.on_close_cb = callback
@@ -297,7 +310,7 @@ pub function TcpStream.on_close(self: TcpStream, callback)
     return self
 end
 
-# Registers an error callback: function(stream, error_msg)
+## Registers an error callback: function(stream, error_msg)
 pub function TcpStream.on_error(self: TcpStream, callback)
     if self is not null
         self.on_error_cb = callback
@@ -305,7 +318,7 @@ pub function TcpStream.on_error(self: TcpStream, callback)
     return self
 end
 
-# Registers a write buffer drain callback: function(stream)
+## Registers a write buffer drain callback: function(stream)
 pub function TcpStream.on_drain(self: TcpStream, callback)
     if self is not null
         self.on_drain_cb = callback
@@ -313,24 +326,24 @@ pub function TcpStream.on_drain(self: TcpStream, callback)
     return self
 end
 
-# Returns 1 if stream is paused, 0 otherwise
-pub function TcpStream.is_paused(self: TcpStream)
+## Returns 1 if stream is paused, 0 otherwise
+pub function TcpStream.is_paused(self: TcpStream) -> int
     if self is null
         return 0
     end
     return self.paused == 1
 end
 
-# Returns 1 if stream is closed, 0 otherwise
-pub function TcpStream.is_closed(self: TcpStream)
+## Returns 1 if stream is closed, 0 otherwise
+pub function TcpStream.is_closed(self: TcpStream) -> int
     if self is null
         return 1
     end
     return self.closed == 1
 end
 
-# Returns count of pending unsent bytes in write buffer
-pub function TcpStream.buffered_bytes(self: TcpStream)
+## Returns count of pending unsent bytes in write buffer
+pub function TcpStream.buffered_bytes(self: TcpStream) -> int
     if self is null
         return 0
     end

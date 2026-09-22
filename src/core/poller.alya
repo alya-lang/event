@@ -9,7 +9,7 @@ import "./watcher.alya"
 
 ## Polls all registered active watchers for readiness within the allocated timeout.
 ## Returns an array of EventNotification structs.
-pub function poller_poll_watchers(loop, wait_ms = 0)
+pub function poller_poll_watchers(loop, wait_ms: int = 0) -> array
     if loop is null
         return []
     end

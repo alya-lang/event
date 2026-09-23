@@ -32,7 +32,7 @@ end
 
 # Extracts the next line terminated by \n (with optional \r stripped)
 ## Returns [line, has_line (1 or 0)]
-pub function StreamReader.read_line(self: StreamReader) -> string
+pub function StreamReader.read_line(self: StreamReader) -> array
     if self is null or ring_available(self.ring) == 0
         return ["", 0]
     end
@@ -50,7 +50,7 @@ end
 
 # Extracts a framed message payload up to delimiter `delim`
 ## Consumes the delimiter and returns [payload, has_message (1 or 0)]
-pub function StreamReader.read_until(self: StreamReader, delim: string) -> string
+pub function StreamReader.read_until(self: StreamReader, delim: string) -> array
     if self is null or ring_available(self.ring) == 0 or delim is null or len(delim) == 0
         return ["", 0]
     end
@@ -65,7 +65,7 @@ end
 
 # Extracts a fixed-length payload of exactly n bytes
 ## Returns [chunk, has_chunk (1 or 0)]
-pub function StreamReader.read_bytes(self: StreamReader, n: int) -> string
+pub function StreamReader.read_bytes(self: StreamReader, n: int) -> array
     if self is null or n is null or n <= 0 or ring_available(self.ring) < n
         return ["", 0]
     end
@@ -112,17 +112,17 @@ pub function stream_reader_feed(reader, chunk)
 end
 
 ## Reads one line from a reader.
-pub function stream_reader_read_line(reader) -> string
+pub function stream_reader_read_line(reader) -> array
     return StreamReader.read_line(reader)
 end
 
 ## Reads up to a delimiter from a reader.
-pub function stream_reader_read_until(reader, delim: string) -> string
+pub function stream_reader_read_until(reader, delim: string) -> array
     return StreamReader.read_until(reader, delim)
 end
 
 ## Reads up to n bytes from a reader.
-pub function stream_reader_read_bytes(reader, n: int) -> string
+pub function stream_reader_read_bytes(reader, n: int) -> array
     return StreamReader.read_bytes(reader, n)
 end
 

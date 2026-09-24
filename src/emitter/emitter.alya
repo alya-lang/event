@@ -121,11 +121,11 @@ pub function emitter_emit(em, event_name: string, _data = null)
 end
 
 ## Clears all listeners for an event name, or all events if event_name is null
-pub function emitter_clear(em, event_name = null)
+pub function emitter_clear(em: EventEmitter, event_name: string = "")
     if em is null
         return 0
     end
-    if event_name is null
+    if event_name is null or len(event_name) == 0
         em.listeners = {}
         return 1
     end
@@ -164,6 +164,6 @@ pub function EventEmitter.emit(self: EventEmitter, event_name: string, data = nu
 end
 
 ## Clears listeners on this emitter.
-pub function EventEmitter.clear(self: EventEmitter, event_name = null)
+pub function EventEmitter.clear(self: EventEmitter, event_name: string = "")
     return emitter_clear(self, event_name)
 end

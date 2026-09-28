@@ -18,6 +18,9 @@ import "../fs/async.alya"
 
 ## Creates a new initialized EventLoop instance.
 ## Backed by high-performance OS kernel multiplexer (Lib/uv) with fallback to std/net.
+# `use_uv` is consumed only by the `uv`-gated block below; without the
+# feature the slim view reports it unused by design.
+# alya-lint: disable-next-line unused-param
 pub function event_loop_new(use_uv = true)
     let p = null
     let b = "fallback"
@@ -253,10 +256,15 @@ pub function loop_run(loop, max_wait_ms: int = 100, on_event = null)
 end
 
 ## Registers an OS process signal watcher (e.g. SIGINT = 2, SIGTERM = 15)
+# `tag`/`data`/`wid` feed the `uv`-gated block below; without the feature
+# the slim view reports them unused by design.
+# alya-lint: disable-next-line unused-param
 pub function loop_watch_signal(loop, signum: int, tag: string = "signal", data = null)
     if loop is null or loop.poller is null or signum is null or signum <= 0
         return -1
     end
+    # `wid` feeds the `uv`-gated call below; see the note on the signature.
+    # alya-lint: disable-next-line unused-var
     let wid = loop.next_watcher_id
     loop.next_watcher_id += 1
     @cfg(feature = "uv")

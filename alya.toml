@@ -11,7 +11,11 @@ repository = "https://github.com/alya-lang/event"
 keywords = ["alya", "alya-lang", "package", "event", "event-loop", "reactor", "concurrency", "networking", "timers"]
 
 [dependencies]
-uv = { git = "https://github.com/alya-lang/uv", tag = "v0.1.0" }
+uv = { git = "https://github.com/alya-lang/uv", tag = "v0.1.0", optional = true }
+
+[features]
+default = ["uv"]
+uv = ["uv"]
 
 # [lint]
 # disabled_rules = []

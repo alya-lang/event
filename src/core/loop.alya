@@ -6,6 +6,7 @@
 ## Provides single-threaded cooperative event dispatching, timers, I/O watchers,
 ## and integration with native kernel multiplexers.
 
+@cfg(feature = "uv")
 import "uv" as uv
 import "../types.alya"
 import "./timer.alya"
@@ -20,6 +21,7 @@ import "../fs/async.alya"
 pub function event_loop_new(use_uv = true)
     let p = null
     let b = "fallback"
+    @cfg(feature = "uv")
     if use_uv != false and use_uv != 0 and use_uv is not null
         p = uv::poller(64, 64)
         if p is not null
@@ -84,6 +86,7 @@ end
 ## Resets all state in the loop
 pub function loop_reset(loop)
     if loop is not null
+        @cfg(feature = "uv")
         if loop.poller is not null
             loop.poller.close()
             loop.poller = uv::poller(64, 64)
@@ -256,7 +259,9 @@ pub function loop_watch_signal(loop, signum: int, tag: string = "signal", data =
     end
     let wid = loop.next_watcher_id
     loop.next_watcher_id += 1
+    @cfg(feature = "uv")
     let res = loop.poller.watch_signal(signum, wid)
+    @cfg(feature = "uv")
     if res == 0
         let w = io_watcher_new(wid, signum, 16, tag, data)
         push(loop.watchers, w)
@@ -271,6 +276,7 @@ pub function loop_unwatch_signal(loop, signum: int)
         return 0
     end
     let removed = watcher_remove(loop, signum)
+    @cfg(feature = "uv")
     loop.poller.unwatch_signal(signum)
     return removed
 end
@@ -280,6 +286,7 @@ pub function loop_free(loop)
     if loop is not null
         loop_stop(loop)
         if loop.poller is not null
+            @cfg(feature = "uv")
             loop.poller.close()
             loop.poller = null
         end

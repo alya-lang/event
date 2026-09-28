@@ -12,7 +12,7 @@ High-performance single-threaded reactor event loop, high-resolution timers, non
 ## 🌟 Features
 
 - ⚡ **Reactor Event Loop Engine**: Single-threaded non-blocking event loop capable of executing 2,500,000+ ticks/sec with dynamic sleep calculation.
-- 🚀 **OS Kernel Multiplexing (`Lib/uv`)**: High-performance I/O multiplexer powered by `Lib/uv` (`epoll` on Linux, `kqueue` on macOS/BSD, `WSAPoll` on Windows) with automatic fallback to `std/net`.
+- 🚀 **OS Kernel Multiplexing (`Lib/uv`)**: High-performance I/O multiplexer powered by `Lib/uv` (`epoll` on Linux, `kqueue` on macOS/BSD, `WSAPoll` on Windows) with automatic fallback to `std/net`. Optional `uv` feature (enabled by default); disable with `--no-default-features` for a zero-dependency build.
 - 🖥️ **Event-Driven `TcpServer` & `TcpClient`**: High-level stream abstractions wrapping non-blocking raw socket descriptors with automatic lifecycle management.
 - 🌊 **Buffered `StreamReader` & `RingBuffer`**: High-speed circular ring buffer and delimiter message framer (`read_line`, `read_until`, `read_bytes`) processing 1,250,000+ frames/sec.
 - 🛑 **Backpressure & Flow Control**: Output buffer threshold enforcement (`high_water_mark`, `on_drain`) and non-blocking read pause/resume controls.
@@ -79,6 +79,22 @@ Or install it directly using the Alya package CLI:
 ```bash
 alya add event --git https://github.com/alya-lang/event --branch main
 alya install
+```
+
+### Package Features
+
+| Feature | Default | Description |
+|:---|:---:|:---|
+| `uv` | ✅ | Native OS kernel multiplexer (`Lib/uv`). Without it the `std/net` fallback is always used. |
+
+```bash
+# Full build (default)
+alya install
+alya test
+
+# Slim build without the native multiplexer
+alya install --no-default-features
+alya test --no-default-features
 ```
 
 ---

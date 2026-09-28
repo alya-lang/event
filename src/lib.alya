@@ -28,6 +28,7 @@ import "./fs/async.alya"
 ##
 ## ### Parameters
 ## - `use_uv`: `true` to enable native OS kernel multiplexer (Lib/uv), `false` for fallback.
+##   Requires the `uv` feature (default-on); without it the fallback is always used.
 ##
 ## ### Returns
 ## Initialized `EventLoop` instance.

@@ -18,6 +18,7 @@ pub function watcher_add(loop, fd: int, events: int = 1, tag: string = "", data 
             w.events = events
             w.tag = tag
             w.data = data
+            @cfg(feature = "uv")
             if loop.poller is not null
                 loop.poller.modify(fd, events, w.id)
             end
@@ -29,6 +30,7 @@ pub function watcher_add(loop, fd: int, events: int = 1, tag: string = "", data 
     loop.next_watcher_id += 1
     let w = io_watcher_new(wid, fd, events, tag, data)
     push(loop.watchers, w)
+    @cfg(feature = "uv")
     if loop.poller is not null
         loop.poller.add(fd, events, wid)
     end
@@ -54,6 +56,7 @@ pub function watcher_remove(loop, fd: int) -> int
         end
     end
     loop.watchers = active_remaining
+    @cfg(feature = "uv")
     if removed == 1 and loop.poller is not null
         loop.poller.remove(fd)
     end

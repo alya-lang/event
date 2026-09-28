@@ -23,6 +23,7 @@ pub function poller_poll_watchers(loop, wait_ms: int = 0) -> array
     end
 
     # Fast path: Native OS Kernel Multiplexer (epoll / WSAPoll / kqueue via Lib/uv)
+    @cfg(feature = "uv")
     if loop.poller is not null
         let uv_events = loop.poller.wait(wait_ms)
         if len(uv_events) == 0

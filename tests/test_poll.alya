@@ -13,6 +13,7 @@ function main()
     runner_assert(r, loop is not null, "loop created")
     let backend_name = loop.backend()
     runner_assert(r, len(backend_name) > 0, "loop backend should be defined")
+    @cfg(feature = "uv")
     runner_assert(r, backend_name != "fallback", "loop should use native kernel multiplexer")
 
     let test_port = 19876

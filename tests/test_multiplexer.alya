@@ -12,6 +12,7 @@ function main()
     let loop = ev::loop()
     let b = loop.backend()
     runner_assert(r, len(b) > 0, "kernel multiplexer backend should be identified")
+    @cfg(feature = "uv")
     runner_assert(r, b != "fallback" and b != "none", "backend should be native OS kernel multiplexer")
     runner_assert_eq(r, loop.active_count(), 0, "initial active count is 0")
 

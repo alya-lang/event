@@ -22,14 +22,34 @@ function main()
 
     # Setup server socket
     let srv = tcp_listen(port, 5)
+    runner_assert(r, srv >= 0, "server listening")
+    if srv < 0
+        runner_summary(r)
+        return
+    end
     tcp_set_nonblocking(srv, 1)
 
-    # Connect client
+    # Connect client (blocking: throws SocketError on failure)
     let client_raw = tcp_connect("127.0.0.1", port)
-    let accepted_raw = tcp_accept(srv)
+
+    # Accept may race the connect on loaded runners (nonblocking
+    # accept returns -1 with nothing pending yet): retry briefly
+    # instead of cascading a -1 fd into a null stream below, which
+    # segfaults silently on field access.
+    let accepted_raw = -1
+    let accept_ticks = 0
+    while accepted_raw < 0 and accept_ticks < 1000
+        accepted_raw = tcp_accept(srv)
+        accept_ticks += 1
+    end
 
     runner_assert(r, client_raw >= 0, "client socket created")
     runner_assert(r, accepted_raw >= 0, "server accepted connection")
+    if accepted_raw < 0
+        tcp_close(srv)
+        runner_summary(r)
+        return
+    end
 
     # Wrap both into TcpStream
     let client_stream = ev::stream(l, client_raw, 64) # 64 bytes high water mark

@@ -90,7 +90,7 @@ pub function RingBuffer.free_space(self: RingBuffer) -> int
 end
 
 ## Returns 1 if buffer is completely empty, 0 otherwise
-pub function RingBuffer.is_empty(self: RingBuffer) -> int
+pub function RingBuffer.is_empty(self: RingBuffer) -> bool
     if self is null
         return true
     end
@@ -98,7 +98,7 @@ pub function RingBuffer.is_empty(self: RingBuffer) -> int
 end
 
 ## Returns 1 if buffer is completely full, 0 otherwise
-pub function RingBuffer.is_full(self: RingBuffer) -> int
+pub function RingBuffer.is_full(self: RingBuffer) -> bool
     if self is null
         return false
     end

@@ -327,7 +327,7 @@ pub function TcpStream.on_drain(self: TcpStream, callback)
 end
 
 ## Returns 1 if stream is paused, 0 otherwise
-pub function TcpStream.is_paused(self: TcpStream) -> int
+pub function TcpStream.is_paused(self: TcpStream) -> bool
     if self is null
         return false
     end
@@ -335,7 +335,7 @@ pub function TcpStream.is_paused(self: TcpStream) -> int
 end
 
 ## Returns 1 if stream is closed, 0 otherwise
-pub function TcpStream.is_closed(self: TcpStream) -> int
+pub function TcpStream.is_closed(self: TcpStream) -> bool
     if self is null
         return true
     end

@@ -8,7 +8,7 @@ function main()
     let r = runner_new()
 
     let em = ev::emitter()
-    runner_assert(r, em != null, "emitter should not be null")
+    runner_assert(r, em is not null, "emitter should not be null")
     runner_assert_eq(r, ev::emitter_listener_count(em, "user_login"), 0, "initial listeners should be 0")
 
     # 1. Register persistent listeners

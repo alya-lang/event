@@ -32,13 +32,13 @@ pub function event_loop_new(use_uv = true)
         end
     end
     return EventLoop {
-        running: 0,
+        running: false,
         timers: [],
         watchers: [],
         next_timer_id: 1,
         next_watcher_id: 1,
         tick_count: 0,
-        stop_requested: 0,
+        stop_requested: false,
         poller: p,
         backend: b,
         fs_pool: null
@@ -48,8 +48,8 @@ end
 ## Requests the event loop to stop
 pub function loop_stop(loop)
     if loop is not null
-        loop.stop_requested = 1
-        loop.running = 0
+        loop.stop_requested = true
+        loop.running = false
     end
 end
 
@@ -63,16 +63,16 @@ end
 
 ## Returns 1 if the event loop is active and has work to do, 0 otherwise
 pub function loop_is_running(loop) -> int
-    if loop is null or loop.stop_requested == 1
-        return 0
+    if loop is null or loop.stop_requested == true
+        return false
     end
     let timers = timer_count_active(loop)
     let watchers = watcher_count_active(loop)
     let fs_pending = fs_pool_pending_count(loop)
     if (timers + watchers + fs_pending) > 0
-        return 1
+        return true
     end
-    return 0
+    return false
 end
 
 ## Returns the total count of active handles (timers + I/O watchers + async fs tasks)
@@ -100,8 +100,8 @@ pub function loop_reset(loop)
         end
         loop.timers = []
         loop.watchers = []
-        loop.stop_requested = 0
-        loop.running = 0
+        loop.stop_requested = false
+        loop.running = false
         loop.tick_count = 0
     end
 end
@@ -120,7 +120,7 @@ pub function loop_tick(loop, max_wait_ms: int = 100)
         max_wait_ms = 0
     end
 
-    loop.running = 1
+    loop.running = true
     loop.tick_count += 1
 
     # 1. Dynamic sleep limit: do not sleep longer than the next pending timer
@@ -162,13 +162,13 @@ end
 ## Dispatches an event notification to its registered handler or callbacks
 pub function loop_dispatch_event(ev)
     if ev is null or ev.data is null
-        return 0
+        return false
     end
     let tag = ev.tag
     if tag == "tcp_server"
         let srv = ev.data
         tcp_server_accept(srv)
-        return 1
+        return true
     end
     if tag == "tcp_stream_read"
         let stream = ev.data
@@ -177,7 +177,7 @@ pub function loop_dispatch_event(ev)
         elif ev.event_type == EventType.Error
             tcp_stream_close(stream)
         end
-        return 1
+        return true
     end
     if tag == "tcp_stream_write"
         let stream = ev.data
@@ -186,7 +186,7 @@ pub function loop_dispatch_event(ev)
         elif ev.event_type == EventType.Error
             tcp_stream_close(stream)
         end
-        return 1
+        return true
     end
     if tag == "tcp_stream_rw"
         let stream = ev.data
@@ -198,17 +198,17 @@ pub function loop_dispatch_event(ev)
             is EventType.Error then
                 tcp_stream_close(stream)
         end
-        return 1
+        return true
     end
     if tag == "readable"
         let cb = ev.data
         cb(ev.fd)
-        return 1
+        return true
     end
     if tag == "writable"
         let cb = ev.data
         cb(ev.fd)
-        return 1
+        return true
     end
     if tag == "fs_async"
         let task = ev.data
@@ -220,14 +220,14 @@ pub function loop_dispatch_event(ev)
                 cb(task.result_error, task.bytes_processed)
             end
         end
-        return 1
+        return true
     end
     if tag == "callback" or tag == "timeout" or tag == "interval"
         let cb = ev.data
         cb(ev)
-        return 1
+        return true
     end
-    return 0
+    return false
 end
 
 # Continuously runs the event loop until stop is requested or no active handles remain.
@@ -239,7 +239,7 @@ pub function loop_run(loop, max_wait_ms: int = 100, on_event = null)
         return 0
     end
     let total_events = 0
-    while loop_is_running(loop) == 1
+    while loop_is_running(loop) == true
         let events = loop_tick(loop, max_wait_ms)
         if len(events) > 0
             total_events += len(events)
@@ -281,7 +281,7 @@ end
 ## Deregisters an OS process signal watcher
 pub function loop_unwatch_signal(loop, signum: int)
     if loop is null or loop.poller is null or signum is null or signum <= 0
-        return 0
+        return false
     end
     let removed = watcher_remove(loop, signum)
     @cfg(feature = "uv")
@@ -304,8 +304,8 @@ pub function loop_free(loop)
         end
         loop.timers = []
         loop.watchers = []
-        loop.stop_requested = 0
-        loop.running = 0
+        loop.stop_requested = false
+        loop.running = false
         loop.tick_count = 0
     end
 end

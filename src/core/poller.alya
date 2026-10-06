@@ -62,7 +62,7 @@ pub function poller_poll_watchers(loop, wait_ms: int = 0) -> array
     # Fast path: single watcher can use the full wait duration directly
     if w_count == 1
         let w = loop.watchers[0]
-        if w.active == 1
+        if w.active == true
             let res = net::tcp_poll(w.fd, wait_ms)
             when res
                 is 1 then
@@ -77,7 +77,7 @@ pub function poller_poll_watchers(loop, wait_ms: int = 0) -> array
     # Multi-watcher path:
     # 1. Non-blocking probe first (timeout = 0)
     for w in loop.watchers
-        if w.active == 1
+        if w.active == true
             let res = net::tcp_poll(w.fd, 0)
             when res
                 is 1 then
@@ -98,7 +98,7 @@ pub function poller_poll_watchers(loop, wait_ms: int = 0) -> array
     while (clock_ms() - start) < wait_ms
         sleep(2)
         for w in loop.watchers
-            if w.active == 1
+            if w.active == true
                 let res = net::tcp_poll(w.fd, 0)
                 when res
                     is 1 then

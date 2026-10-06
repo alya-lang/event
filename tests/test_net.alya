@@ -43,7 +43,7 @@ function main()
     server.data = ctx
 
     runner_assert(r, server is not null, "server started successfully")
-    runner_assert_eq(r, server.is_listening(), 1, "server is actively listening")
+    runner_assert_eq(r, server.is_listening(), true, "server is actively listening")
     runner_assert_eq(r, server.client_count(), 0, "initial client count should be 0")
 
     # 2. Connect client non-blockingly
@@ -92,8 +92,8 @@ function main()
     # 4. Graceful Teardown
     ev::stream_close(client)
     let closed = ev::tcp_server_close(server)
-    runner_assert_eq(r, closed, 1, "server.close() returned 1")
-    runner_assert_eq(r, server.is_listening(), 0, "server is no longer listening")
+    runner_assert_eq(r, closed, true, "server.close() returned 1")
+    runner_assert_eq(r, server.is_listening(), false, "server is no longer listening")
     runner_assert_eq(r, server.client_count(), 0, "active client map is empty")
 
     runner_summary(r)

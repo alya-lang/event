@@ -92,7 +92,7 @@ end
 ## Returns 1 if buffer is completely empty, 0 otherwise
 pub function RingBuffer.is_empty(self: RingBuffer) -> int
     if self is null
-        return 1
+        return true
     end
     return self.size == 0
 end
@@ -100,7 +100,7 @@ end
 ## Returns 1 if buffer is completely full, 0 otherwise
 pub function RingBuffer.is_full(self: RingBuffer) -> int
     if self is null
-        return 0
+        return false
     end
     return self.size >= self.capacity
 end

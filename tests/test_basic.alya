@@ -11,8 +11,8 @@ function main()
     # 1. Loop initialization and state (function API and struct methods)
     let loop = ev::loop()
     runner_assert(r, loop is not null, "loop should not be null")
-    runner_assert_eq(r, ev::loop_is_running(loop), 0, "fresh loop should not be running")
-    runner_assert_eq(r, loop.is_running(), 0, "loop.is_running() struct method works")
+    runner_assert_eq(r, ev::loop_is_running(loop), false, "fresh loop should not be running")
+    runner_assert_eq(r, loop.is_running(), false, "loop.is_running() struct method works")
     runner_assert_eq(r, ev::loop_active_count(loop), 0, "active count should be 0")
     runner_assert_eq(r, loop.active_count(), 0, "loop.active_count() struct method works")
 
@@ -23,14 +23,14 @@ function main()
     runner_assert(r, t1 >= 1, "t1 id should be >= 1")
     runner_assert(r, t2 > t1, "t2 id should be greater than t1")
     runner_assert_eq(r, loop.active_count(), 2, "active count should be 2")
-    runner_assert_eq(r, loop.is_running(), 1, "loop with timers should report active")
+    runner_assert_eq(r, loop.is_running(), true, "loop with timers should report active")
 
     let cancelled = loop.clear_timer(t1)
-    runner_assert_eq(r, cancelled, 1, "should cancel t1 successfully via loop.clear_timer")
+    runner_assert_eq(r, cancelled, true, "should cancel t1 successfully via loop.clear_timer")
     runner_assert_eq(r, loop.active_count(), 1, "active count should drop to 1")
 
     let not_found = loop.clear_timer(9999)
-    runner_assert_eq(r, not_found, 0, "cancelling non-existent timer should return 0")
+    runner_assert_eq(r, not_found, false, "cancelling non-existent timer should return 0")
 
     # 3. Watcher registration and removal via struct methods
     let s_b1 = udp_socket()
@@ -43,11 +43,11 @@ function main()
     runner_assert_eq(r, loop.active_count(), 3, "active handle count (1 timer + 2 watchers) should be 3")
 
     let unwatch_res = loop.unwatch(s_b1)
-    runner_assert_eq(r, unwatch_res, 1, "unwatch should return 1")
+    runner_assert_eq(r, unwatch_res, true, "unwatch should return 1")
     runner_assert_eq(r, loop.active_count(), 2, "remaining handles should be 2")
 
     let unwatch_again = loop.unwatch(s_b1)
-    runner_assert_eq(r, unwatch_again, 0, "unwatching again should return 0")
+    runner_assert_eq(r, unwatch_again, false, "unwatching again should return 0")
 
     loop.unwatch(s_b2)
     tcp_close(s_b1)
@@ -62,15 +62,15 @@ function main()
     runner_assert(r, buf.len() > 0, "buffer should have bytes")
 
     let res1 = buf.read_line()
-    runner_assert_eq(r, res1[1], 1, "should have read first line")
+    runner_assert_eq(r, res1[1], true, "should have read first line")
     runner_assert_str_eq(r, res1[0], "Hello World", "first line content mismatch")
 
     let res2 = buf.read_line()
-    runner_assert_eq(r, res2[1], 1, "should have read second line")
+    runner_assert_eq(r, res2[1], true, "should have read second line")
     runner_assert_str_eq(r, res2[0], "Second Line", "second line content mismatch")
 
     let res3 = buf.read_line()
-    runner_assert_eq(r, res3[1], 0, "should not have third line")
+    runner_assert_eq(r, res3[1], false, "should not have third line")
     runner_assert_str_eq(r, res3[0], "", "third line should be empty")
 
     buf.clear()

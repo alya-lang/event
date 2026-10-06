@@ -57,7 +57,7 @@ function main()
     # 5. Kernel Multiplexer Zero-Wait Polling Throughput
     let loop3 = ev::loop()
     let s_bench = tcp_listen(19899, 10)
-    tcp_set_nonblocking(s_bench, 1)
+    tcp_set_nonblocking(s_bench, true)
     loop3.watch_readable(s_bench, "bench_srv", null)
     bench_start(runner, 20000)
     let n = 0

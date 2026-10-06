@@ -118,12 +118,12 @@ end
 
 ## Returns whether this timer is currently active.
 pub function Timer.is_active(self: Timer) -> int
-    return self.active == 1
+    return self.active == true
 end
 
 ## Cancels this timer, preventing it from firing further.
 pub function Timer.cancel(self: Timer)
-    self.active = 0
+    self.active = false
 end
 
 ## Constructs a new Timer record instance.
@@ -144,7 +144,7 @@ pub function timer_new(id, deadline_ms, interval_ms: int = 0, tag: string = "", 
         interval_ms: interval_ms,
         tag: tag,
         data: data,
-        active: 1
+        active: true
     }
 end
 
@@ -168,12 +168,12 @@ end
 
 ## Returns whether this I/O watcher is currently active.
 pub function IoWatcher.is_active(self: IoWatcher) -> int
-    return self.active == 1
+    return self.active == true
 end
 
 ## Cancels this I/O watcher and ceases polling its descriptor.
 pub function IoWatcher.cancel(self: IoWatcher)
-    self.active = 0
+    self.active = false
 end
 
 ## Constructs a new IoWatcher record instance.
@@ -194,7 +194,7 @@ pub function io_watcher_new(id, fd: int, events: int = 1, tag: string = "", data
         events: events,
         tag: tag,
         data: data,
-        active: 1
+        active: true
     }
 end
 

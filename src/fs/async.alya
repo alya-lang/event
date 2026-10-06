@@ -32,7 +32,7 @@ pub function fs_task_new(id, op: string, path: string, data = null, on_complete 
         result_data: null,
         result_error: null,
         bytes_processed: 0,
-        success: 0
+        success: false
     }
 end
 
@@ -41,15 +41,15 @@ end
 function fs_worker_proc(channels)
     let req_ch = channels[0]
     let res_ch = channels[1]
-    while 1
+    while true
         let task = channel_recv(req_ch, 500)
         if task is not null
             if task.op == "stop"
                 break
             end
             if task.op == "read"
-                if file_exists(task.path) == 0
-                    task.success = 0
+                if file_exists(task.path) == false
+                    task.success = false
                     task.result_error = "File not found: " + task.path
                     task.result_data = ""
                     task.bytes_processed = 0
@@ -58,10 +58,10 @@ function fs_worker_proc(channels)
                         let content = read_file(task.path)
                         task.result_data = content
                         task.bytes_processed = len(content)
-                        task.success = 1
+                        task.success = true
                         task.result_error = null
                     catch err
-                        task.success = 0
+                        task.success = false
                         task.result_error = str(err)
                         task.result_data = ""
                         task.bytes_processed = 0
@@ -70,11 +70,11 @@ function fs_worker_proc(channels)
             elif task.op == "write"
                 try
                     write_file(task.path, task.data)
-                    task.success = 1
+                    task.success = true
                     task.bytes_processed = len(task.data)
                     task.result_error = null
                 catch err
-                    task.success = 0
+                    task.success = false
                     task.result_error = str(err)
                     task.bytes_processed = 0
                 end
@@ -117,7 +117,7 @@ pub function fs_pool_new(worker_count: int = 2)
         threads: threads,
         tag: "fs_pool",
         worker_count: worker_count,
-        active: 1,
+        active: true,
         pending_tasks: 0,
         next_task_id: 1
     }
@@ -141,7 +141,7 @@ pub function fs_read_async(loop, path: string, on_complete)
         return -1
     end
     let pool = loop_ensure_fs_pool(loop)
-    if pool is null or pool.active == 0
+    if pool is null or pool.active == false
         return -1
     end
     let tid = pool.next_task_id
@@ -159,7 +159,7 @@ pub function fs_write_async(loop, path: string, data, on_complete = null)
         return -1
     end
     let pool = loop_ensure_fs_pool(loop)
-    if pool is null or pool.active == 0
+    if pool is null or pool.active == false
         return -1
     end
     let tid = pool.next_task_id
@@ -178,8 +178,8 @@ pub function fs_pool_poll_completed(loop)
     end
     let pool = loop.fs_pool
     let completed = []
-    let has_more = 1
-    while has_more == 1
+    let has_more = true
+    while has_more == true
         let task = channel_try_recv(pool.res_ch)
         if task is not null
             if pool.pending_tasks > 0
@@ -188,7 +188,7 @@ pub function fs_pool_poll_completed(loop)
             let ev = event_notification_new(EventType.None, -1, task.id, "fs_async", task)
             push(completed, ev)
         else
-            has_more = 0
+            has_more = false
         end
     end
     return completed
@@ -204,10 +204,10 @@ end
 
 ## Stops all background worker threads and frees channels
 pub function fs_pool_free(pool)
-    if pool is null or pool.active == 0
+    if pool is null or pool.active == false
         return
     end
-    pool.active = 0
+    pool.active = false
     let i = 0
     while i < pool.worker_count
         let stop_task = fs_task_new(0, "stop", "", null, null)

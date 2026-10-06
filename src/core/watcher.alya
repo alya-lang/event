@@ -13,7 +13,7 @@ pub function watcher_add(loop, fd: int, events: int = 1, tag: string = "", data 
     end
     # Check if an existing watcher for this fd is already registered
     for w in loop.watchers
-        if w.fd == fd and w.active == 1
+        if w.fd == fd and w.active == true
             # Update existing watcher with new events / tag / data
             w.events = events
             w.tag = tag
@@ -41,23 +41,23 @@ end
 ## Returns 1 if found and removed, 0 otherwise
 pub function watcher_remove(loop, fd: int) -> int
     if loop is null or fd is null
-        return 0
+        return false
     end
-    let removed = 0
+    let removed = false
     let active_remaining = []
     for w in loop.watchers
         if w.fd == fd
-            w.active = 0
-            removed = 1
+            w.active = false
+            removed = true
         else
-            if w.active == 1
+            if w.active == true
                 push(active_remaining, w)
             end
         end
     end
     loop.watchers = active_remaining
     @cfg(feature = "uv")
-    if removed == 1 and loop.poller is not null
+    if removed == true and loop.poller is not null
         loop.poller.remove(fd)
     end
     return removed
@@ -70,7 +70,7 @@ pub function watcher_count_active(loop) -> int
     end
     let active_count = 0
     for w in loop.watchers
-        if w.active == 1
+        if w.active == true
             active_count += 1
         end
     end
@@ -83,7 +83,7 @@ pub function watcher_find(loop, fd: int)
         return null
     end
     for w in loop.watchers
-        if w.fd == fd and w.active == 1
+        if w.fd == fd and w.active == true
             return w
         end
     end
@@ -96,7 +96,7 @@ pub function watcher_find_by_id(loop, wid: int)
         return null
     end
     for w in loop.watchers
-        if w.id == wid and w.active == 1
+        if w.id == wid and w.active == true
             return w
         end
     end

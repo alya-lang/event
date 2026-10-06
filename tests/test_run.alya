@@ -13,12 +13,12 @@ function main()
     let _t1 = l.timeout(10, "timeout_1", 100)
     let _t2 = l.timeout(25, "timeout_2", 200)
     runner_assert_eq(r, l.active_count(), 2, "initial active count should be 2")
-    runner_assert_eq(r, l.is_running(), 1, "loop should report active handles")
+    runner_assert_eq(r, l.is_running(), true, "loop should report active handles")
 
     let count = l.run(10)
     runner_assert(r, count >= 2, "loop.run should process all expired timers")
     runner_assert_eq(r, l.active_count(), 0, "loop active count should be 0 when done")
-    runner_assert_eq(r, l.is_running(), 0, "loop should not be running when empty")
+    runner_assert_eq(r, l.is_running(), false, "loop should not be running when empty")
 
     # 2. loop.stop() called during an interval
     let l2 = ev::loop()
@@ -31,7 +31,7 @@ function main()
 
     # Stop loop
     l2.stop()
-    runner_assert_eq(r, l2.is_running(), 0, "loop with stop requested should not be running")
+    runner_assert_eq(r, l2.is_running(), false, "loop with stop requested should not be running")
 
     # 3. loop.free() cleans up all state
     let l3 = ev::loop()
@@ -43,7 +43,7 @@ function main()
     l3.free()
     tcp_close(s_dummy)
     runner_assert_eq(r, l3.active_count(), 0, "l3.free() should clear all active handles")
-    runner_assert_eq(r, l3.is_running(), 0, "l3 should not be running after free")
+    runner_assert_eq(r, l3.is_running(), false, "l3 should not be running after free")
 
     # 4. Watcher aliases: watch_readable and watch_writable
     let l4 = ev::loop()

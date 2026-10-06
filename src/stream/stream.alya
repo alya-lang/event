@@ -18,7 +18,7 @@ pub function tcp_stream_new(loop, fd: int, high_water_mark: int = 65536)
         high_water_mark = 65536
     end
 
-    net::tcp_set_nonblocking(fd, 1)
+    net::tcp_set_nonblocking(fd, true)
 
     let stream = TcpStream {
         loop: loop,
@@ -26,8 +26,8 @@ pub function tcp_stream_new(loop, fd: int, high_water_mark: int = 65536)
         peer_addr: net::tcp_peer_addr(fd),
         tag: "tcp_stream",
         data: null,
-        closed: 0,
-        paused: 0,
+        closed: false,
+        paused: false,
         high_water_mark: high_water_mark,
         write_buf: byte_buffer_new(),
         reader: stream_reader_new("\n"),
@@ -47,7 +47,7 @@ end
 
 ## Non-blocking write operation with backpressure protection.
 pub function tcp_stream_write(stream, data)
-    if stream is null or stream.closed == 1
+    if stream is null or stream.closed == true
         return -1
     end
     if data is null or len(data) == 0
@@ -98,17 +98,17 @@ end
 
 ## Flushes pending bytes from write buffer when socket becomes writable
 pub function tcp_stream_flush(stream)
-    if stream is null or stream.closed == 1
-        return 0
+    if stream is null or stream.closed == true
+        return false
     end
     if buffer_len(stream.write_buf) == 0
         # Nothing pending, restore reading mode
-        if stream.paused == 1
+        if stream.paused == true
             stream.loop.unwatch(stream.fd)
         else
             stream.loop.watch_read(stream.fd, "tcp_stream_read", stream)
         end
-        return 1
+        return true
     end
 
     let pending = buffer_to_string(stream.write_buf)
@@ -116,7 +116,7 @@ pub function tcp_stream_flush(stream)
     if sent > 0
         if sent >= len(pending)
             buffer_clear(stream.write_buf)
-            if stream.paused == 1
+            if stream.paused == true
                 stream.loop.unwatch(stream.fd)
             else
                 stream.loop.watch_read(stream.fd, "tcp_stream_read", stream)
@@ -126,15 +126,15 @@ pub function tcp_stream_flush(stream)
             if cb is not null
                 cb(stream)
             end
-            return 1
+            return true
         else
             let remainder = pending[sent..len(pending)]
             buffer_clear(stream.write_buf)
             buffer_append(stream.write_buf, remainder)
-            return 0
+            return false
         end
     end
-    return 0
+    return false
 end
 
 ## Flushes pending writes on this stream.
@@ -144,7 +144,7 @@ end
 
 ## Reads incoming chunk from socket, feeds reader, and dispatches callbacks
 pub function tcp_stream_read(stream, max_bytes: int = 4096)
-    if stream is null or stream.closed == 1 or stream.paused == 1
+    if stream is null or stream.closed == true or stream.paused == true
         return ""
     end
     if max_bytes is null or max_bytes <= 0
@@ -169,13 +169,13 @@ pub function tcp_stream_read(stream, max_bytes: int = 4096)
     # 2. Dispatch on_line callback for all parsed lines
     let l_cb = stream.on_line_cb
     if l_cb is not null
-        let has_more = 1
-        while has_more == 1
+        let has_more = true
+        while has_more == true
             let res = stream_reader_read_line(stream.reader)
-            if res[1] == 1
+            if res[1] == true
                 l_cb(stream, res[0])
             else
-                has_more = 0
+                has_more = false
             end
         end
     end
@@ -190,16 +190,16 @@ end
 
 ## Pauses incoming reads from the socket (Flow Control)
 pub function tcp_stream_pause(stream)
-    if stream is null or stream.closed == 1 or stream.paused == 1
-        return 0
+    if stream is null or stream.closed == true or stream.paused == true
+        return false
     end
-    stream.paused = 1
+    stream.paused = true
     if buffer_len(stream.write_buf) > 0
         stream.loop.watch_write(stream.fd, "tcp_stream_write", stream)
     else
         stream.loop.unwatch(stream.fd)
     end
-    return 1
+    return true
 end
 
 ## Pauses reads on this stream.
@@ -209,16 +209,16 @@ end
 
 ## Resumes incoming reads from the socket (Flow Control)
 pub function tcp_stream_resume(stream)
-    if stream is null or stream.closed == 1 or stream.paused == 0
-        return 0
+    if stream is null or stream.closed == true or stream.paused == false
+        return false
     end
-    stream.paused = 0
+    stream.paused = false
     if buffer_len(stream.write_buf) > 0
         watcher_add(stream.loop, stream.fd, 3, "tcp_stream_rw", stream)
     else
         stream.loop.watch_read(stream.fd, "tcp_stream_read", stream)
     end
-    return 1
+    return true
 end
 
 ## Resumes reads on this stream.
@@ -228,17 +228,17 @@ end
 
 ## Closes socket and unregisters all watchers from event loop
 pub function tcp_stream_close(stream: TcpStream)
-    if stream is null or stream.closed == 1
-        return 0
+    if stream is null or stream.closed == true
+        return false
     end
-    stream.closed = 1
+    stream.closed = true
     stream.loop.unwatch(stream.fd)
     net::tcp_close(stream.fd)
     let cb = stream.on_close_cb
     if cb is not null
         cb(stream)
     end
-    return 1
+    return true
 end
 
 ## Closes this stream.
@@ -329,17 +329,17 @@ end
 ## Returns 1 if stream is paused, 0 otherwise
 pub function TcpStream.is_paused(self: TcpStream) -> int
     if self is null
-        return 0
+        return false
     end
-    return self.paused == 1
+    return self.paused == true
 end
 
 ## Returns 1 if stream is closed, 0 otherwise
 pub function TcpStream.is_closed(self: TcpStream) -> int
     if self is null
-        return 1
+        return true
     end
-    return self.closed == 1
+    return self.closed == true
 end
 
 ## Returns count of pending unsent bytes in write buffer

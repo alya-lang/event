@@ -38,7 +38,7 @@ function demo_sockets()
     say "   Multiplexer Backend: " + loop.backend()
     let echo_port = 19999
     let server = tcp_listen(echo_port, 5)
-    tcp_set_nonblocking(server, 1)
+    tcp_set_nonblocking(server, true)
     ev::watch_read(loop, server, "server_listener", null)
     say "   Server listening on port " + str(echo_port) + " (non-blocking)"
 
@@ -51,7 +51,7 @@ function demo_sockets()
     say "   Loop detected " + str(len(events)) + " incoming socket event(s)"
 
     let accepted = tcp_accept(server)
-    tcp_set_nonblocking(accepted, 1)
+    tcp_set_nonblocking(accepted, true)
     ev::watch_read(loop, accepted, "client_socket", null)
 
     # Poll loop for data event

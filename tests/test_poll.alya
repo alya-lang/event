@@ -19,7 +19,7 @@ function main()
     let test_port = 19876
     let srv = tcp_listen(test_port, 10)
     runner_assert(r, srv >= 0, "server socket should be valid (>= 0)")
-    tcp_set_nonblocking(srv, 1)
+    tcp_set_nonblocking(srv, true)
 
     # Register server in event loop to watch for incoming connections
     let srv_wid = ev::watch_read(loop, srv, "server_accept", "srv_ctx")
@@ -43,7 +43,7 @@ function main()
     # 5. Accept incoming client connection
     let accepted = tcp_accept(srv)
     runner_assert(r, accepted >= 0, "accepted client socket should be valid")
-    tcp_set_nonblocking(accepted, 1)
+    tcp_set_nonblocking(accepted, true)
 
     # Register accepted client socket in loop
     let acc_wid = ev::watch_read(loop, accepted, "client_data", "client_ctx")
@@ -78,7 +78,7 @@ function main()
     runner_assert_eq(r, fb_loop.active_count(), 0, "fallback loop active count is 0")
 
     let srv_fb = tcp_listen(19877, 5)
-    tcp_set_nonblocking(srv_fb, 1)
+    tcp_set_nonblocking(srv_fb, true)
     fb_loop.watch_read(srv_fb, "fb_srv", null)
     runner_assert_eq(r, fb_loop.active_count(), 1, "fallback loop registered watcher")
 

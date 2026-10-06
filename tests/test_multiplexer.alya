@@ -20,7 +20,7 @@ function main()
     let srv_port = 19888
     let srv = tcp_listen(srv_port, 16)
     runner_assert(r, srv >= 0, "server listening on port 19888")
-    tcp_set_nonblocking(srv, 1)
+    tcp_set_nonblocking(srv, true)
 
     let srv_wid = loop.watch_readable(srv, "srv_listener", "server_data")
     runner_assert(r, srv_wid >= 1, "listener registered in kernel poller")
@@ -42,7 +42,7 @@ function main()
 
     let a1 = tcp_accept(srv)
     runner_assert(r, a1 >= 0, "server accepted client 1")
-    tcp_set_nonblocking(a1, 1)
+    tcp_set_nonblocking(a1, true)
 
     let a1_wid = loop.watch_readable(a1, "client1_stream", null)
     runner_assert(r, a1_wid > srv_wid, "accepted client 1 registered in poller")
@@ -61,7 +61,7 @@ function main()
 
     let a2 = tcp_accept(srv)
     runner_assert(r, a2 >= 0, "server accepted client 2")
-    tcp_set_nonblocking(a2, 1)
+    tcp_set_nonblocking(a2, true)
 
     let a2_wid = loop.watch_readable(a2, "client2_stream", null)
     runner_assert(r, a2_wid > a1_wid, "accepted client 2 registered in poller")
@@ -108,7 +108,7 @@ function main()
     runner_assert_eq(r, loop.active_count(), 0, "active watchers 0 after unwatching all")
 
     loop.free()
-    runner_assert_eq(r, loop.is_running(), 0, "loop freed")
+    runner_assert_eq(r, loop.is_running(), false, "loop freed")
 
     runner_summary(r)
 end

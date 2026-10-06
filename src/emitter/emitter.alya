@@ -23,10 +23,10 @@ pub function emitter_on(em, event_name: string, tag: string)
     let listener = EventListener {
         id: lid,
         event_name: event_name,
-        is_once: 0,
+        is_once: false,
         tag: tag,
         data: null,
-        active: 1
+        active: true
     }
 
     if event_name not in em.listeners
@@ -46,10 +46,10 @@ pub function emitter_once(em, event_name: string, tag: string)
     let listener = EventListener {
         id: lid,
         event_name: event_name,
-        is_once: 1,
+        is_once: true,
         tag: tag,
         data: null,
-        active: 1
+        active: true
     }
 
     if event_name not in em.listeners
@@ -63,17 +63,17 @@ end
 ## Returns 1 if removed, 0 if not found
 pub function emitter_off(em, event_name: string, tag: string)
     if em is null or event_name is null or event_name not in em.listeners
-        return 0
+        return false
     end
     let list = em.listeners[event_name]
-    let removed = 0
+    let removed = false
     let remaining = []
     for l in list
         if l.tag == tag or str(l.id) == str(tag)
-            l.active = 0
-            removed = 1
+            l.active = false
+            removed = true
         else
-            if l.active == 1
+            if l.active == true
                 push(remaining, l)
             end
         end
@@ -90,7 +90,7 @@ pub function emitter_listener_count(em, event_name: string) -> int
     let list = em.listeners[event_name]
     let active_count = 0
     for l in list
-        if l.active == 1
+        if l.active == true
             active_count += 1
         end
     end
@@ -107,10 +107,10 @@ pub function emitter_emit(em, event_name: string, _data = null)
     let triggered_tags = []
     let remaining = []
     for l in list
-        if l.active == 1
+        if l.active == true
             push(triggered_tags, l.tag)
-            if l.is_once == 1
-                l.active = 0
+            if l.is_once == true
+                l.active = false
             else
                 push(remaining, l)
             end
@@ -123,17 +123,17 @@ end
 ## Clears all listeners for an event name, or all events if event_name is null
 pub function emitter_clear(em: EventEmitter, event_name: string = "")
     if em is null
-        return 0
+        return false
     end
     if event_name is null or len(event_name) == 0
         em.listeners = {}
-        return 1
+        return true
     end
     if event_name in em.listeners
         em.listeners[event_name] = []
-        return 1
+        return true
     end
-    return 0
+    return false
 end
 
 # --- Struct Methods on EventEmitter ---

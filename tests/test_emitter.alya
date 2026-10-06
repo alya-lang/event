@@ -37,7 +37,7 @@ function main()
 
     # 3. Deregister listener via off
     let off_res = ev::emitter_off(em, "user_login", "welcome_emailer")
-    runner_assert_eq(r, off_res, 1, "emitter_off should return 1")
+    runner_assert_eq(r, off_res, true, "emitter_off should return 1")
     runner_assert_eq(r, ev::emitter_listener_count(em, "user_login"), 1, "remaining listeners should be 1")
 
     let trig_after_off = ev::emitter_emit(em, "user_login", null)

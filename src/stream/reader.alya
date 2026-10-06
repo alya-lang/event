@@ -34,43 +34,43 @@ end
 ## Returns [line, has_line (1 or 0)]
 pub function StreamReader.read_line(self: StreamReader) -> array
     if self is null or ring_available(self.ring) == 0
-        return ["", 0]
+        return ["", false]
     end
     let idx = index_of(self.ring.raw, "\n")
     if idx < 0
-        return ["", 0]
+        return ["", false]
     end
     let raw = ring_read(self.ring, idx + 1)
     let line = raw[0..idx]
     if len(line) > 0 and line[(len(line) - 1)..len(line)] == "\r"
         line = line[0..(len(line) - 1)]
     end
-    return [line, 1]
+    return [line, true]
 end
 
 # Extracts a framed message payload up to delimiter `delim`
 ## Consumes the delimiter and returns [payload, has_message (1 or 0)]
 pub function StreamReader.read_until(self: StreamReader, delim: string) -> array
     if self is null or ring_available(self.ring) == 0 or delim is null or len(delim) == 0
-        return ["", 0]
+        return ["", false]
     end
     let idx = index_of(self.ring.raw, delim)
     if idx < 0
-        return ["", 0]
+        return ["", false]
     end
     let payload = self.ring.raw[0..idx]
     ring_read(self.ring, idx + len(delim))
-    return [payload, 1]
+    return [payload, true]
 end
 
 # Extracts a fixed-length payload of exactly n bytes
 ## Returns [chunk, has_chunk (1 or 0)]
 pub function StreamReader.read_bytes(self: StreamReader, n: int) -> array
     if self is null or n is null or n <= 0 or ring_available(self.ring) < n
-        return ["", 0]
+        return ["", false]
     end
     let payload = ring_read(self.ring, n)
-    return [payload, 1]
+    return [payload, true]
 end
 
 ## Peeks up to n bytes from the reader without consuming them
@@ -99,7 +99,7 @@ end
 ## Returns 1 if reader has no buffered data, 0 otherwise
 pub function StreamReader.is_empty(self: StreamReader) -> int
     if self is null
-        return 1
+        return true
     end
     return ring_is_empty(self.ring)
 end

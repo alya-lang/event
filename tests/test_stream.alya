@@ -27,7 +27,7 @@ function main()
         runner_summary(r)
         return
     end
-    tcp_set_nonblocking(srv, 1)
+    tcp_set_nonblocking(srv, true)
 
     # Connect client (blocking: throws SocketError on failure)
     let client_raw = tcp_connect("127.0.0.1", port)
@@ -55,18 +55,18 @@ function main()
     let client_stream = ev::stream(l, client_raw, 64) # 64 bytes high water mark
     let server_stream = ev::stream(l, accepted_raw, 64)
 
-    runner_assert_eq(r, client_stream.is_closed(), 0, "client stream should be open")
-    runner_assert_eq(r, server_stream.is_closed(), 0, "server stream should be open")
-    runner_assert_eq(r, client_stream.is_paused(), 0, "client stream should not be paused")
+    runner_assert_eq(r, client_stream.is_closed(), false, "client stream should be open")
+    runner_assert_eq(r, server_stream.is_closed(), false, "server stream should be open")
+    runner_assert_eq(r, client_stream.is_paused(), false, "client stream should not be paused")
 
     # 1. Flow Control: pause and resume
     let p_res = client_stream.pause()
-    runner_assert_eq(r, p_res, 1, "pause returned 1")
-    runner_assert_eq(r, client_stream.is_paused(), 1, "client stream is paused")
+    runner_assert_eq(r, p_res, true, "pause returned 1")
+    runner_assert_eq(r, client_stream.is_paused(), true, "client stream is paused")
 
     let r_res = client_stream.resume()
-    runner_assert_eq(r, r_res, 1, "resume returned 1")
-    runner_assert_eq(r, client_stream.is_paused(), 0, "client stream is unpaused")
+    runner_assert_eq(r, r_res, true, "resume returned 1")
+    runner_assert_eq(r, client_stream.is_paused(), false, "client stream is unpaused")
 
     # 2. Non-blocking write & Line framing over TcpStream
     let store = LineStore { lines: [] }
@@ -108,8 +108,8 @@ function main()
     server_stream.close()
     tcp_close(srv)
 
-    runner_assert_eq(r, client_stream.is_closed(), 1, "client stream closed")
-    runner_assert_eq(r, server_stream.is_closed(), 1, "server stream closed")
+    runner_assert_eq(r, client_stream.is_closed(), true, "client stream closed")
+    runner_assert_eq(r, server_stream.is_closed(), true, "server stream closed")
 
     runner_summary(r)
 end

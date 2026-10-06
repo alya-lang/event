@@ -26,7 +26,7 @@ pub function tcp_server_listen(loop, host: string, port: int, on_connect, on_err
         return null
     end
 
-    net::tcp_set_nonblocking(srv_fd, 1)
+    net::tcp_set_nonblocking(srv_fd, true)
 
     let srv = TcpServer {
         loop: loop,
@@ -36,7 +36,7 @@ pub function tcp_server_listen(loop, host: string, port: int, on_connect, on_err
         data: null,
         port: port,
         backlog: backlog,
-        listening: 1,
+        listening: true,
         on_connect_cb: on_connect,
         on_error_cb: on_error,
         clients: []
@@ -49,7 +49,7 @@ end
 
 ## Accepts incoming client connections non-blockingly and wraps each in a TcpStream
 pub function tcp_server_accept(server: TcpServer)
-    if server is null or server.listening == 0 or server.fd < 0
+    if server is null or server.listening == false or server.fd < 0
         return 0
     end
     let count = 0
@@ -77,10 +77,10 @@ end
 
 ## Stops server, closes all active connected client streams, and closes listener socket
 pub function tcp_server_close(server: TcpServer)
-    if server is null or server.listening == 0
-        return 0
+    if server is null or server.listening == false
+        return false
     end
-    server.listening = 0
+    server.listening = false
     server.loop.unwatch(server.fd)
 
     for client in server.clients
@@ -89,7 +89,7 @@ pub function tcp_server_close(server: TcpServer)
     server.clients = []
 
     net::tcp_close(server.fd)
-    return 1
+    return true
 end
 
 ## Closes this server listener.
@@ -108,9 +108,9 @@ end
 ## Returns 1 if server is actively listening, 0 otherwise
 pub function TcpServer.is_listening(self: TcpServer)
     if self is null
-        return 0
+        return false
     end
-    return self.listening == 1
+    return self.listening == true
 end
 
 ## Registers or updates the connection callback: function(server, client_stream)

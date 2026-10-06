@@ -7,48 +7,48 @@ import "std/fs"
 import "../src/lib.alya" as ev
 
 # Test state variables
-let write_done = 0
+let write_done = false
 let write_bytes = 0
 let write_err = null
 
-let read_done = 0
+let read_done = false
 let read_content = ""
 let read_err = null
 
-let err_done = 0
+let err_done = false
 let err_msg = null
 
-let multi_1_done = 0
-let multi_2_done = 0
-let timer_fired = 0
+let multi_1_done = false
+let multi_2_done = false
+let timer_fired = false
 
 function on_write_1(err, bytes)
-    write_done = 1
+    write_done = true
     write_err = err
     write_bytes = bytes
 end
 
 function on_read_1(err, content)
-    read_done = 1
+    read_done = true
     read_err = err
     read_content = content
 end
 
 function on_read_err(err, _content)
-    err_done = 1
+    err_done = true
     err_msg = err
 end
 
 function on_multi_1(_err, _bytes)
-    multi_1_done = 1
+    multi_1_done = true
 end
 
 function on_multi_2(_err, _content)
-    multi_2_done = 1
+    multi_2_done = true
 end
 
 function on_timer(_event)
-    timer_fired = 1
+    timer_fired = true
 end
 
 function main()
@@ -60,10 +60,10 @@ function main()
     let non_existent = "test_non_existent_file_99999.xyz"
 
     # Clean up any leftover artifacts
-    if file_exists(test_file_1) == 1
+    if file_exists(test_file_1) == true
         remove_file(test_file_1)
     end
-    if file_exists(test_file_2) == 1
+    if file_exists(test_file_2) == true
         remove_file(test_file_2)
     end
 
@@ -71,7 +71,7 @@ function main()
     runner_assert(r, loop is not null, "loop should not be null")
 
     # 1. Test async file write
-    write_done = 0
+    write_done = false
     write_bytes = 0
     write_err = null
 
@@ -81,37 +81,37 @@ function main()
     # Run loop to process the write
     loop.run()
 
-    runner_assert_eq(r, write_done, 1, "async write callback should have executed")
+    runner_assert_eq(r, write_done, true, "async write callback should have executed")
     runner_assert(r, write_err is null, "async write should succeed without error")
     runner_assert(r, write_bytes > 0, "written bytes should be > 0")
-    runner_assert_eq(r, file_exists(test_file_1), 1, "target file should exist on disk")
+    runner_assert_eq(r, file_exists(test_file_1), true, "target file should exist on disk")
 
     # 2. Test async file read
-    read_done = 0
+    read_done = false
     read_content = ""
     read_err = null
 
     ev::fs_read_async(loop, test_file_1, on_read_1)
     loop.run()
 
-    runner_assert_eq(r, read_done, 1, "async read callback should have executed")
+    runner_assert_eq(r, read_done, true, "async read callback should have executed")
     runner_assert(r, read_err is null, "async read should succeed without error")
     runner_assert_eq(r, read_content, "Hello from Alya Async I/O Thread Pool!", "read content must match written payload")
 
     # 3. Test async file read on non-existent file
-    err_done = 0
+    err_done = false
     err_msg = null
 
     ev::fs_read_async(loop, non_existent, on_read_err)
     loop.run()
 
-    runner_assert_eq(r, err_done, 1, "error callback should execute")
+    runner_assert_eq(r, err_done, true, "error callback should execute")
     runner_assert(r, err_msg is not null, "error message should be returned for missing file")
 
     # 4. Test struct methods and concurrent multi-file async operations
-    multi_1_done = 0
-    multi_2_done = 0
-    timer_fired = 0
+    multi_1_done = false
+    multi_2_done = false
+    timer_fired = false
 
     loop.fs_write(test_file_2, "Concurrent Async Task Payload 2", on_multi_1)
     loop.fs_read(test_file_1, on_multi_2)
@@ -123,9 +123,9 @@ function main()
 
     loop.run()
 
-    runner_assert_eq(r, multi_1_done, 1, "multi_1 async task should complete")
-    runner_assert_eq(r, multi_2_done, 1, "multi_2 async task should complete")
-    runner_assert_eq(r, timer_fired, 1, "timer should fire concurrently with async disk I/O")
+    runner_assert_eq(r, multi_1_done, true, "multi_1 async task should complete")
+    runner_assert_eq(r, multi_2_done, true, "multi_2 async task should complete")
+    runner_assert_eq(r, timer_fired, true, "timer should fire concurrently with async disk I/O")
 
     # Verify content of test_file_2
     let file2_content = read_file(test_file_2)

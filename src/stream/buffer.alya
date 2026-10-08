@@ -27,6 +27,26 @@ pub function buffer_to_string(buf) -> string
     return res
 end
 
+## Concatenates and returns the entire contents of the buffer as a byte array.
+##
+## NUL-safe counterpart of `buffer_to_string`. Chunks must all be byte
+## arrays: never mix string and bytes chunks in one buffer (use one wire
+## kind per connection).
+pub function buffer_to_bytes(buf) -> array
+    let out = []
+    if buf is null or len(buf.chunks) == 0
+        return out
+    end
+    for chunk in buf.chunks
+        let i = 0
+        while i < len(chunk)
+            out.push(chunk[i])
+            i += 1
+        end
+    end
+    return out
+end
+
 ## Clears the buffer contents and resets total byte count
 pub function buffer_clear(buf)
     if buf is not null
@@ -82,6 +102,11 @@ end
 ## Drains this buffer into a string.
 pub function StreamBuffer.to_string(self: StreamBuffer) -> string
     return buffer_to_string(self)
+end
+
+## Drains this buffer into a byte array (NUL-safe).
+pub function StreamBuffer.to_bytes(self: StreamBuffer) -> array
+    return buffer_to_bytes(self)
 end
 
 ## Clears this buffer.

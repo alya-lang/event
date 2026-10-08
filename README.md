@@ -16,6 +16,7 @@ High-performance single-threaded reactor event loop, high-resolution timers, non
 - 🖥️ **Event-Driven `TcpServer` & `TcpClient`**: High-level stream abstractions wrapping non-blocking raw socket descriptors with automatic lifecycle management.
 - 🌊 **Buffered `StreamReader` & `RingBuffer`**: High-speed circular ring buffer and delimiter message framer (`read_line`, `read_until`, `read_bytes`) processing 1,250,000+ frames/sec.
 - 🛑 **Backpressure & Flow Control**: Output buffer threshold enforcement (`high_water_mark`, `on_drain`) and non-blocking read pause/resume controls.
+- 🧬 **Binary Wire Mode**: NUL-safe byte-array streams (`write_bytes`, `on_data_bytes`, `set_binary`) over the same reactor, for binary protocols next to text streams.
 - ⏱️ **High-Resolution Timer Queue**: Millisecond-accurate one-shot timeouts (`set_timeout`) and repeating intervals (`set_interval`) with deadline scheduling.
 - 🌐 **Non-Blocking Socket Demultiplexer**: Multi-socket concurrent I/O handling thousands of simultaneous connections without blocking execution.
 - 📡 **Cross-Platform Signal Handling**: Seamless process signal watching (`watch_signal` / `unwatch_signal`) for lifecycle events (`SIGINT`, `SIGTERM`).
@@ -58,6 +59,7 @@ event/
 │   ├── test_multiplexer.alya # Multi-client kernel multiplexer test suite
 │   ├── test_reader.alya    # RingBuffer and StreamReader framing test suite
 │   ├── test_stream.alya    # TcpStream flow control & backpressure test suite
+│   ├── test_stream_bytes.alya # TcpStream binary wire mode (NUL-safe byte arrays)
 │   └── test_net.alya       # End-to-end TcpServer & TcpClient integration test suite
 └── benches/
     └── bench_basic.alya    # Performance micro-benchmarks (7 methods, 1M+ ops/sec)
@@ -247,12 +249,16 @@ let line2 = reader.read_line() # -> ["Host: api.alya.org", 1]
 |---|---|---|---|
 | `stream(loop, fd, high_water_mark)` | `loop`, `fd`, `high_water_mark = 65536` | `TcpStream` | Wraps a non-blocking socket into an event-driven `TcpStream`. |
 | `stream_write(stream, data)` | `stream`, `data` | `integer` | Writes non-blockingly. Returns `1` if accepted below high water mark, `0` if backpressure threshold exceeded, `-1` on error. |
+| `stream_write_bytes(stream, data)` | `stream`, `data: array` | `integer` | NUL-safe byte-array write with the same backpressure contract. Never mix with string writes on one connection. |
 | `stream_read(stream, max_bytes)` | `stream`, `max_bytes = 4096` | `string` | Reads incoming chunk, feeds stream reader, and dispatches callbacks. |
+| `stream_read_bytes(stream, max_bytes)` | `stream`, `max_bytes = 4096` | `array` | NUL-safe byte-array read, dispatches `on_data_bytes` (line reader bypassed). |
+| `stream.set_binary(enabled)` | `enabled: int` | `TcpStream` | Switches a stream between text (`0`) and binary (`1`) wire mode. |
 | `stream_pause(stream)` | `stream` | `integer` | Flow control: pauses reading from socket by removing readable watcher. |
 | `stream_resume(stream)` | `stream` | `integer` | Flow control: resumes reading from socket. |
 | `stream_close(stream)` | `stream` | `integer` | Closes socket and unregisters all loop watchers. |
 | `stream_on_line(stream, callback)` | `stream`, `callback` | `TcpStream` | Registers line-delimited message callback: `function(stream, line)`. |
 | `stream_on_data(stream, callback)` | `stream`, `callback` | `TcpStream` | Registers raw chunk callback: `function(stream, chunk)`. |
+| `stream_on_data_bytes(stream, callback)` | `stream`, `callback` | `TcpStream` | Registers byte-array chunk callback: `function(stream, chunk_array)`. |
 | `stream_on_close(stream, callback)` | `stream`, `callback` | `TcpStream` | Registers disconnect callback: `function(stream)`. |
 | `stream_on_drain(stream, callback)` | `stream`, `callback` | `TcpStream` | Registers buffer drained callback: `function(stream)`. |
 | `stream.is_paused()` | `stream` | `integer` | Returns `1` if stream reading is paused, `0` otherwise. |

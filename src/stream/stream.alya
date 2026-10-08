@@ -30,10 +30,13 @@ pub function tcp_stream_new(loop, fd: int, high_water_mark: int = 65536)
         paused: false,
         high_water_mark: high_water_mark,
         write_buf: byte_buffer_new(),
+        write_buf_bytes: byte_buffer_new(),
         reader: stream_reader_new("\n"),
         peer_ip: net::tcp_peer_ip(fd),
         peer_port: net::tcp_peer_port(fd),
+        binary: 0,
         on_data_cb: null,
+        on_data_bytes_cb: null,
         on_line_cb: null,
         on_close_cb: null,
         on_error_cb: null,
@@ -96,6 +99,88 @@ pub function TcpStream.write(self: TcpStream, data)
     return tcp_stream_write(self, data)
 end
 
+## Switches a stream between text (0) and binary (1) wire mode.
+##
+## Binary mode reads via `tcp_recv_bytes` and dispatches `on_data_bytes_cb`
+## with integer arrays; the line reader is bypassed. Never mix string and
+## bytes chunks on one connection.
+pub function tcp_stream_set_binary(stream, enabled: int)
+    if stream is null
+        return stream
+    end
+    if enabled == true
+        stream.binary = 1
+    else
+        stream.binary = 0
+    end
+    return stream
+end
+
+## Sets binary wire mode on this stream.
+pub function TcpStream.set_binary(self: TcpStream, enabled: int)
+    return tcp_stream_set_binary(self, enabled)
+end
+
+## Non-blocking byte-array write with backpressure protection (NUL-safe).
+##
+## Array counterpart of `tcp_stream_write`: payloads travel via
+## `tcp_send_bytes` and queue into a dedicated bytes buffer. Never mix
+## string and bytes writes on one connection.
+pub function tcp_stream_write_bytes(stream, data: array)
+    if stream is null or stream.closed == true
+        return -1
+    end
+    if data is null or len(data) == 0
+        return 1
+    end
+
+    # If pending bytes already exist in the bytes buffer, preserve ordering
+    if buffer_len(stream.write_buf_bytes) > 0
+        buffer_append(stream.write_buf_bytes, data)
+        stream.loop.watch_write(stream.fd, "tcp_stream_write", stream)
+        if buffer_len(stream.write_buf_bytes) >= stream.high_water_mark
+            return 0
+        end
+        return 1
+    end
+
+    # Attempt direct non-blocking transmission
+    let sent = net::tcp_send_bytes(stream.fd, data)
+    if sent < 0
+        # Would block or socket error: queue into bytes buffer
+        buffer_append(stream.write_buf_bytes, data)
+        stream.loop.watch_write(stream.fd, "tcp_stream_write", stream)
+        if buffer_len(stream.write_buf_bytes) >= stream.high_water_mark
+            return 0
+        end
+        return 1
+    end
+
+    if sent < len(data)
+        # Partial transmission: buffer the unsent remainder
+        let remainder = []
+        let ri = sent
+        while ri < len(data)
+            remainder.push(data[ri])
+            ri += 1
+        end
+        buffer_append(stream.write_buf_bytes, remainder)
+        stream.loop.watch_write(stream.fd, "tcp_stream_write", stream)
+        if buffer_len(stream.write_buf_bytes) >= stream.high_water_mark
+            return 0
+        end
+        return 1
+    end
+
+    # All bytes transmitted immediately
+    return 1
+end
+
+## Writes a byte array to this stream.
+pub function TcpStream.write_bytes(self: TcpStream, data: array)
+    return tcp_stream_write_bytes(self, data)
+end
+
 ## Flushes pending bytes from write buffer when socket becomes writable
 pub function tcp_stream_flush(stream)
     if stream is null or stream.closed == true
@@ -116,21 +201,55 @@ pub function tcp_stream_flush(stream)
     if sent > 0
         if sent >= len(pending)
             buffer_clear(stream.write_buf)
+            if buffer_len(stream.write_buf_bytes) == 0
+                if stream.paused == true
+                    stream.loop.unwatch(stream.fd)
+                else
+                    stream.loop.watch_read(stream.fd, "tcp_stream_read", stream)
+                end
+                # Buffer drained! Notify caller
+                let cb = stream.on_drain_cb
+                if cb is not null
+                    cb(stream)
+                end
+                return true
+            end
+        else
+            let remainder = pending[sent..len(pending)]
+            buffer_clear(stream.write_buf)
+            buffer_append(stream.write_buf, remainder)
+            return false
+        end
+    elif buffer_len(stream.write_buf_bytes) == 0
+        return false
+    end
+
+    # Drain the bytes buffer (string part is empty here)
+    let pending_bytes = buffer_to_bytes(stream.write_buf_bytes)
+    let sent_bytes = net::tcp_send_bytes(stream.fd, pending_bytes)
+    if sent_bytes > 0
+        if sent_bytes >= len(pending_bytes)
+            buffer_clear(stream.write_buf_bytes)
             if stream.paused == true
                 stream.loop.unwatch(stream.fd)
             else
                 stream.loop.watch_read(stream.fd, "tcp_stream_read", stream)
             end
             # Buffer drained! Notify caller
-            let cb = stream.on_drain_cb
-            if cb is not null
-                cb(stream)
+            let dcb = stream.on_drain_cb
+            if dcb is not null
+                dcb(stream)
             end
             return true
         else
-            let remainder = pending[sent..len(pending)]
-            buffer_clear(stream.write_buf)
-            buffer_append(stream.write_buf, remainder)
+            let brem = []
+            let bi = sent_bytes
+            while bi < len(pending_bytes)
+                brem.push(pending_bytes[bi])
+                bi += 1
+            end
+            buffer_clear(stream.write_buf_bytes)
+            buffer_append(stream.write_buf_bytes, brem)
             return false
         end
     end
@@ -149,6 +268,11 @@ pub function tcp_stream_read(stream, max_bytes: int = 4096)
     end
     if max_bytes is null or max_bytes <= 0
         max_bytes = 4096
+    end
+
+    # Binary wire mode: byte arrays straight to the bytes callback.
+    if stream.binary == true
+        return tcp_stream_read_bytes(stream, max_bytes)
     end
 
     let chunk = net::tcp_recv(stream.fd, max_bytes)
@@ -186,6 +310,41 @@ end
 ## Reads up to max_bytes from this stream.
 pub function TcpStream.read(self: TcpStream, max_bytes: int = 4096)
     return tcp_stream_read(self, max_bytes)
+end
+
+## Reads an incoming byte array from the socket and dispatches the bytes callback.
+##
+## NUL-safe counterpart of `tcp_stream_read`: the chunk travels as an integer
+## array and the line reader is bypassed. Enable per stream with
+## `tcp_stream_set_binary` (the reactor dispatches reads through this
+## automatically once set).
+pub function tcp_stream_read_bytes(stream, max_bytes: int = 4096)
+    if stream is null or stream.closed == true or stream.paused == true
+        return []
+    end
+    if max_bytes is null or max_bytes <= 0
+        max_bytes = 4096
+    end
+
+    let chunk = net::tcp_recv_bytes(stream.fd, max_bytes)
+    if chunk is null or len(chunk) == 0
+        # Peer disconnected or EOF
+        tcp_stream_close(stream)
+        return []
+    end
+
+    # Dispatch on_data_bytes callback
+    let d_cb = stream.on_data_bytes_cb
+    if d_cb is not null
+        d_cb(stream, chunk)
+    end
+
+    return chunk
+end
+
+## Reads up to max_bytes as a byte array from this stream.
+pub function TcpStream.read_bytes(self: TcpStream, max_bytes: int = 4096)
+    return tcp_stream_read_bytes(self, max_bytes)
 end
 
 ## Pauses incoming reads from the socket (Flow Control)
@@ -254,9 +413,22 @@ pub function stream_on_data(stream, callback)
     return stream
 end
 
+## Registers a byte-array data chunk callback: function(stream, chunk_array)
+pub function stream_on_data_bytes(stream, callback)
+    if stream is not null
+        stream.on_data_bytes_cb = callback
+    end
+    return stream
+end
+
 ## Registers a data callback on this stream.
 pub function TcpStream.on_data(self: TcpStream, callback)
     return stream_on_data(self, callback)
+end
+
+## Registers a byte-array data callback on this stream.
+pub function TcpStream.on_data_bytes(self: TcpStream, callback)
+    return stream_on_data_bytes(self, callback)
 end
 
 ## Registers a line-delimited message callback: function(stream, line)
@@ -275,6 +447,11 @@ end
 ## Functional aliases for stream operations
 pub function stream_write(stream, data)
     return tcp_stream_write(stream, data)
+end
+
+## Writes a byte array to a stream.
+pub function stream_write_bytes(stream, data: array)
+    return tcp_stream_write_bytes(stream, data)
 end
 
 ## Flushes pending writes on a stream.

@@ -1,0 +1,128 @@
+## Test suite for TcpStream Binary Wire Mode (byte arrays, NUL-safe)
+## Part of the Alya Language package ecosystem (https://github.com/alya-lang)
+import "std/test"
+import "std/net"
+import "../src/lib.alya" as ev
+
+struct BytesSink
+    chunks: array
+end
+
+function handle_server_bytes(stream, chunk)
+    let s = stream.data
+    push(s.chunks, chunk)
+end
+
+function tick_loop(l, ticks)
+    let t = 0
+    while t < ticks
+        let events = ev::loop_tick(l, 50)
+        for e in events
+            ev::loop_dispatch_event(e)
+        end
+        t += 1
+    end
+end
+
+function main()
+    test_suite("event Package TcpStream Binary Mode Test Suite")
+    let r = runner_new()
+
+    # 1. Buffer unit: byte chunks concatenate exactly, NUL preserved.
+    let bb = ev::byte_buffer_new()
+    ev::buffer_append(bb, [72, 0])
+    ev::buffer_append(bb, [255, 1])
+    let flat = ev::buffer_to_bytes(bb)
+    runner_assert_eq(r, len(flat), 4, "buffer_to_bytes concatenates chunks")
+    runner_assert_eq(r, flat[0], 72, "buffer byte 0")
+    runner_assert_eq(r, flat[1], 0, "buffer NUL byte preserved")
+    runner_assert_eq(r, flat[2], 255, "buffer high byte preserved")
+    runner_assert_eq(r, flat[3], 1, "buffer byte 3")
+
+    # 2. Binary flag defaults off, setter flips both ways.
+    let l = ev::loop()
+    let port = 19993
+
+    let srv = tcp_listen(port, 5)
+    runner_assert(r, srv >= 0, "server listening")
+    if srv < 0
+        runner_summary(r)
+        return
+    end
+    tcp_set_nonblocking(srv, true)
+
+    let client_raw = tcp_connect("127.0.0.1", port)
+
+    let accepted_raw = -1
+    let accept_ticks = 0
+    while accepted_raw < 0 and accept_ticks < 1000
+        accepted_raw = tcp_accept(srv)
+        accept_ticks += 1
+    end
+
+    runner_assert(r, client_raw >= 0, "client socket created")
+    runner_assert(r, accepted_raw >= 0, "server accepted connection")
+    if accepted_raw < 0
+        tcp_close(srv)
+        runner_summary(r)
+        return
+    end
+
+    let client_stream = ev::stream(l, client_raw, 65536)
+    let server_stream = ev::stream(l, accepted_raw, 65536)
+    runner_assert_eq(r, client_stream.binary, 0, "binary off by default")
+    client_stream.set_binary(1)
+    server_stream.set_binary(1)
+    runner_assert_eq(r, client_stream.binary, 1, "binary enabled on client")
+    runner_assert_eq(r, server_stream.binary, 1, "binary enabled on server")
+
+    # 3. Binary echo both directions with NUL payloads.
+    let store = BytesSink { chunks: [] }
+    server_stream.data = store
+    server_stream.on_data_bytes(handle_server_bytes)
+
+    let payload = [72, 101, 0, 108, 108, 111, 0, 255]
+    runner_assert_eq(r, client_stream.write_bytes(payload), 1, "write_bytes sends immediately")
+    tick_loop(l, 20)
+
+    runner_assert_eq(r, len(store.chunks), 1, "server got one binary chunk")
+    let got = store.chunks[0]
+    runner_assert_eq(r, len(got), len(payload), "binary chunk length matches")
+    let bi = 0
+    let match = 1
+    while bi < len(payload)
+        if got[bi] != payload[bi]
+            match = 0
+        end
+        bi += 1
+    end
+    runner_assert_eq(r, match, 1, "binary chunk bytes match exactly (NUL intact)")
+
+    # 4. Text streams are unaffected by the binary next door: fresh pair.
+    let client_raw2 = tcp_connect("127.0.0.1", port)
+    let accepted_raw2 = -1
+    let accept_ticks2 = 0
+    while accepted_raw2 < 0 and accept_ticks2 < 1000
+        accepted_raw2 = tcp_accept(srv)
+        accept_ticks2 += 1
+    end
+    runner_assert(r, accepted_raw2 >= 0, "second connection accepted")
+    let c2 = ev::stream(l, client_raw2, 65536)
+    let s2 = ev::stream(l, accepted_raw2, 65536)
+    runner_assert_eq(r, c2.binary, 0, "new streams default to text")
+    c2.write("ping-text")
+    tick_loop(l, 20)
+    c2.close()
+    s2.close()
+
+    client_stream.close()
+    server_stream.close()
+    tcp_close(srv)
+
+    let failed = runner_summary(r)
+    if failed > 0
+        exit(1)
+    end
+end
+
+main()

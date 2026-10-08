@@ -7,7 +7,7 @@ import "../types.alya"
 
 ## Registers a one-shot timeout in the loop.
 ## Returns the assigned timer ID (integer >= 1).
-pub function timer_add_timeout(loop, delay_ms: int, tag: string = "", data = null) -> int
+pub function timer_add_timeout(loop: EventLoop, delay_ms: int, tag: string = "", data = null) -> int
     if loop is null
         return -1
     end
@@ -18,14 +18,14 @@ pub function timer_add_timeout(loop, delay_ms: int, tag: string = "", data = nul
     loop.next_timer_id += 1
     let now = clock_ms()
     let deadline = now + delay_ms
-    let t = timer_new(tid, deadline, 0, tag, data)
+    let t: Timer = timer_new(tid, deadline, 0, tag, data)
     push(loop.timers, t)
     return tid
 end
 
 # Registers a recurring interval timer in the loop
 ## Returns the assigned timer ID (integer >= 1)
-pub function timer_add_interval(loop, interval_ms: int, tag: string = "", data = null) -> int
+pub function timer_add_interval(loop: EventLoop, interval_ms: int, tag: string = "", data = null) -> int
     if loop is null
         return -1
     end
@@ -36,18 +36,20 @@ pub function timer_add_interval(loop, interval_ms: int, tag: string = "", data =
     loop.next_timer_id += 1
     let now = clock_ms()
     let deadline = now + interval_ms
-    let t = timer_new(tid, deadline, interval_ms, tag, data)
+    let t: Timer = timer_new(tid, deadline, interval_ms, tag, data)
     push(loop.timers, t)
     return tid
 end
 
 # Cancels an existing active timer by its ID
 ## Returns 1 if found and cancelled, 0 otherwise
-pub function timer_cancel(loop, timer_id: int) -> int
+pub function timer_cancel(loop: EventLoop, timer_id: int) -> int
     if loop is null or timer_id is null or timer_id < 0
         return false
     end
-    for t in loop.timers
+    let timer_count = len(loop.timers)
+    for i in 0..timer_count
+        let t: Timer = loop.timers[i]
         if t.id == timer_id and t.active == true
             t.active = false
             return true
@@ -57,12 +59,14 @@ pub function timer_cancel(loop, timer_id: int) -> int
 end
 
 ## Returns the number of currently active timers in the loop
-pub function timer_count_active(loop) -> int
+pub function timer_count_active(loop: EventLoop) -> int
     if loop is null
         return 0
     end
     let active_count = 0
-    for t in loop.timers
+    let timer_count = len(loop.timers)
+    for i in 0..timer_count
+        let t: Timer = loop.timers[i]
         if t.active == true
             active_count += 1
         end
@@ -72,7 +76,7 @@ end
 
 # Calculates the wait duration in milliseconds until the closest timer expires
 ## If no active timers exist, returns max_wait_ms
-pub function timer_nearest_wait_ms(loop, max_wait_ms: int = 1000) -> int
+pub function timer_nearest_wait_ms(loop: EventLoop, max_wait_ms: int = 1000) -> int
     if loop is null
         return max_wait_ms
     end
@@ -80,7 +84,9 @@ pub function timer_nearest_wait_ms(loop, max_wait_ms: int = 1000) -> int
     let min_wait = max_wait_ms
     let has_active = false
 
-    for t in loop.timers
+    let timer_count = len(loop.timers)
+    for i in 0..timer_count
+        let t: Timer = loop.timers[i]
         if t.active == true
             has_active = true
             let diff = t.deadline_ms - now
@@ -100,7 +106,7 @@ pub function timer_nearest_wait_ms(loop, max_wait_ms: int = 1000) -> int
 end
 
 ## Collects all expired timers, reschedules intervals, and returns EventNotification records
-pub function timer_collect_expired(loop) -> array
+pub function timer_collect_expired(loop: EventLoop) -> array
     if loop is null
         return []
     end
@@ -108,7 +114,9 @@ pub function timer_collect_expired(loop) -> array
     let expired = []
     let active_remaining = []
 
-    for t in loop.timers
+    let timer_count = len(loop.timers)
+    for i in 0..timer_count
+        let t: Timer = loop.timers[i]
         if t.active == true
             if t.deadline_ms <= now
                 # Timer has expired!

@@ -9,7 +9,7 @@ import "./watcher.alya"
 
 ## Polls all registered active watchers for readiness within the allocated timeout.
 ## Returns an array of EventNotification structs.
-pub function poller_poll_watchers(loop, wait_ms: int = 0) -> array
+pub function poller_poll_watchers(loop: EventLoop, wait_ms: int = 0) -> array
     if loop is null
         return []
     end
@@ -30,7 +30,7 @@ pub function poller_poll_watchers(loop, wait_ms: int = 0) -> array
             return events
         end
         for ev in uv_events
-            let w = watcher_find(loop, ev.fd)
+            let w: IoWatcher = watcher_find(loop, ev.fd)
             if w is null
                 w = watcher_find_by_id(loop, ev.udata)
             end
@@ -61,7 +61,7 @@ pub function poller_poll_watchers(loop, wait_ms: int = 0) -> array
     # Fallback path: Pure std/net linear polling loop
     # Fast path: single watcher can use the full wait duration directly
     if w_count == 1
-        let w = loop.watchers[0]
+        let w: IoWatcher = loop.watchers[0]
         if w.active == true
             let res = net::tcp_poll(w.fd, wait_ms)
             when res
@@ -76,7 +76,8 @@ pub function poller_poll_watchers(loop, wait_ms: int = 0) -> array
 
     # Multi-watcher path:
     # 1. Non-blocking probe first (timeout = 0)
-    for w in loop.watchers
+    for i in 0..w_count
+        let w: IoWatcher = loop.watchers[i]
         if w.active == true
             let res = net::tcp_poll(w.fd, 0)
             when res
@@ -97,7 +98,9 @@ pub function poller_poll_watchers(loop, wait_ms: int = 0) -> array
     let start = clock_ms()
     while (clock_ms() - start) < wait_ms
         sleep(2)
-        for w in loop.watchers
+        let poll_count = len(loop.watchers)
+        for i in 0..poll_count
+            let w: IoWatcher = loop.watchers[i]
             if w.active == true
                 let res = net::tcp_poll(w.fd, 0)
                 when res

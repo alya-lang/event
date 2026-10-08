@@ -86,12 +86,19 @@ function main()
     tick_loop(l, 20)
 
     runner_assert_eq(r, len(store.chunks), 1, "server got one binary chunk")
-    let got = store.chunks[0]
+    let got = []
+    if len(store.chunks) > 0
+        got = store.chunks[0]
+    end
     runner_assert_eq(r, len(got), len(payload), "binary chunk length matches")
     let bi = 0
     let match = 1
     while bi < len(payload)
-        if got[bi] != payload[bi]
+        if bi < len(got)
+            if got[bi] != payload[bi]
+                match = 0
+            end
+        else
             match = 0
         end
         bi += 1

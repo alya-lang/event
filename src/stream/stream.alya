@@ -328,8 +328,9 @@ pub function tcp_stream_read_bytes(stream, max_bytes: int = 4096)
 
     let chunk = net::tcp_recv_bytes(stream.fd, max_bytes)
     if chunk is null or len(chunk) == 0
-        # Peer disconnected or EOF
-        tcp_stream_close(stream)
+        # Empty read on a non-blocking socket means would-block (EAGAIN),
+        # not EOF: keep the stream open and retry on a later tick.
+        # Real EOF surfaces via Error event / poller, not here.
         return []
     end
 

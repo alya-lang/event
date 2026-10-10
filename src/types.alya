@@ -73,7 +73,7 @@ end
 ## Returns a summary string representation of an EventNotification.
 pub function EventNotification.summary(self: EventNotification) -> string
     let type_str = event_type_name(self.event_type)
-    return "EventNotification({type_str}, fd={self.fd}, timer_id={self.timer_id}, tag={self.tag})"
+    return f"EventNotification({type_str}, fd={self.fd}, timer_id={self.timer_id}, tag={self.tag})"
 end
 
 ## Constructs a new EventNotification struct instance.
